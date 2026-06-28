@@ -16,9 +16,24 @@ export async function ensureSession(dayId: string): Promise<string> {
   return created.id;
 }
 
+/** Find the in-progress freestyle (off-program) session, or create one. */
+export async function ensureCustomSession(name?: string): Promise<string> {
+  const existing = await prisma.workoutSession.findFirst({
+    where: { dayId: null, completed: false },
+    orderBy: { date: 'desc' },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+  const created = await prisma.workoutSession.create({
+    data: { dayId: null, name: name ?? 'Freestyle workout' },
+    select: { id: true },
+  });
+  return created.id;
+}
+
 export type SaveSetInput = {
   sessionId?: string | null;
-  dayId: string;
+  dayId?: string | null;
   slotId: string;
   exerciseId: string;
   setNumber: number;
@@ -39,7 +54,8 @@ export type SaveSetResult = {
 
 /** Upsert a single set. Lazily creates the session. Flags a new e1RM PR. */
 export async function saveSet(input: SaveSetInput): Promise<SaveSetResult> {
-  const sessionId = input.sessionId || (await ensureSession(input.dayId));
+  const sessionId =
+    input.sessionId || (input.dayId ? await ensureSession(input.dayId) : await ensureCustomSession());
 
   const row = await prisma.setLog.upsert({
     where: {
@@ -176,5 +192,26 @@ export async function advanceSchedule(dayId: string) {
 export async function discardSession(sessionId: string) {
   await prisma.workoutSession.deleteMany({ where: { id: sessionId, completed: false } });
   revalidatePath('/today');
+  return { ok: true };
+}
+
+/** Last logged working sets for a lift — used to prefill a freshly-added exercise. */
+export async function prefillForExercise(exerciseId: string) {
+  const last = await prisma.setLog.findFirst({
+    where: { exerciseId, completed: true, isWarmup: false },
+    orderBy: { createdAt: 'desc' },
+    select: { sessionId: true },
+  });
+  if (!last) return [];
+  return prisma.setLog.findMany({
+    where: { sessionId: last.sessionId, exerciseId, isWarmup: false },
+    orderBy: { setNumber: 'asc' },
+    select: { weightKg: true, reps: true, rpe: true },
+  });
+}
+
+/** Remove all sets for one ad-hoc exercise (by its synthetic slotId) in a session. */
+export async function removeCustomExerciseSets(sessionId: string, slotId: string) {
+  await prisma.setLog.deleteMany({ where: { sessionId, slotId } });
   return { ok: true };
 }

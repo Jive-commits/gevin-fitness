@@ -14,6 +14,7 @@ export function Stepper({
   label,
   size = 'md',
   emberWhenSet = false,
+  compact = false,
 }: {
   value: number | null;
   onChange: (v: number | null) => void;
@@ -24,6 +25,7 @@ export function Stepper({
   label?: string;
   size?: 'md' | 'lg';
   emberWhenSet?: boolean;
+  compact?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
@@ -61,7 +63,7 @@ export function Stepper({
   return (
     <div className="flex flex-col items-center gap-1">
       {label && <span className="text-[10px] font-medium uppercase tracking-wide text-text-faint">{label}</span>}
-      <div className="flex items-center gap-1.5">
+      <div className={cn('flex items-center', compact ? 'gap-1' : 'gap-1.5')}>
         <button
           type="button"
           onClick={() => bump(-1)}
@@ -77,7 +79,7 @@ export function Stepper({
         <div
           className={cn(
             'grid place-items-center rounded-xl',
-            big ? 'h-14 min-w-[92px] px-2' : 'h-12 min-w-[64px] px-1',
+            big ? 'h-14 min-w-[92px] px-2' : compact ? 'h-12 min-w-[42px] px-0.5' : 'h-12 min-w-[64px] px-1',
           )}
         >
           {editing ? (

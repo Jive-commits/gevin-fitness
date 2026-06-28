@@ -28,7 +28,7 @@ export async function getSettings(): Promise<AppSettings> {
   let row = await prisma.userSettings.findUnique({ where: { id: 'default' } });
   if (!row) {
     const defaultUnits =
-      (process.env.DEFAULT_UNITS || 'kg').toLowerCase() === 'lb' ? 'lb' : 'kg';
+      (process.env.DEFAULT_UNITS || 'lb').toLowerCase() === 'kg' ? 'kg' : 'lb';
     row = await prisma.userSettings.create({
       data: {
         id: 'default',

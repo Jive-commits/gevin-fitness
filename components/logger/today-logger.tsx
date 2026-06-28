@@ -2,14 +2,15 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Clock, ChevronDown, Flag, Trophy, Loader2, Dumbbell } from 'lucide-react';
+import { Clock, ChevronDown, Flag, Trophy, Loader2, Dumbbell, RotateCcw, Plus } from 'lucide-react';
 import { ExerciseCard, type LoggerSet, type LoggerSlot } from '@/components/logger/exercise-card';
 import { SwapDrawer, type SwapSlot } from '@/components/swap/swap-drawer';
 import { BottomSheet } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useRestTimer } from '@/components/logger/rest-timer';
-import { saveSet, ensureSession, finishSession, advanceSchedule, type FinishSummary } from '@/app/actions/session';
+import { saveSet, ensureSession, finishSession, advanceSchedule, discardSession, type FinishSummary } from '@/app/actions/session';
 import { setActiveDay } from '@/app/actions/settings';
 import { formatClock, formatDuration } from '@/lib/format';
 import { formatWeight, type Units } from '@/lib/units';
@@ -73,6 +74,8 @@ export function TodayLogger({
   const [dayPickerOpen, setDayPickerOpen] = useState(false);
   const [summary, setSummary] = useState<FinishSummary | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   // ----- session lifecycle (auto, no Save button) -----
   const sessionIdRef = useRef<string | null>(initialSessionId);
@@ -199,6 +202,15 @@ export function TodayLogger({
     setFinishing(false);
   }
 
+  async function handleReset() {
+    setResetting(true);
+    rest.skip();
+    const sid = sessionIdRef.current;
+    if (sid) await discardSession(sid);
+    // Hard reload guarantees a clean slate (fresh prefill, no in-progress session).
+    window.location.assign('/today');
+  }
+
   return (
     <div className="pb-4">
       {/* Header */}
@@ -213,9 +225,18 @@ export function TodayLogger({
               <span className={cn('text-[11px] font-semibold uppercase', SPLIT_TONE[splitType])}>{splitType}</span>
             </div>
           </button>
-          <div className="flex shrink-0 items-center gap-1.5 rounded-pill surface-2 border border-border px-3 py-1.5">
-            <Clock size={13} className="text-text-faint" />
-            <span className="num text-sm font-semibold tabular-nums">{formatClock(elapsedSec)}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              onClick={() => setResetOpen(true)}
+              className="tap grid h-9 w-9 place-items-center rounded-full surface-2 border border-border text-text-dim"
+              aria-label="Reset session"
+            >
+              <RotateCcw size={15} />
+            </button>
+            <div className="flex items-center gap-1.5 rounded-pill surface-2 border border-border px-3 py-1.5">
+              <Clock size={13} className="text-text-faint" />
+              <span className="num text-sm font-semibold tabular-nums">{formatClock(elapsedSec)}</span>
+            </div>
           </div>
         </div>
         {/* progress */}
@@ -300,6 +321,23 @@ export function TodayLogger({
           router.refresh();
         }}
       />
+
+      <BottomSheet open={resetOpen} onOpenChange={setResetOpen} title="Reset session">
+        <div className="space-y-4 py-1">
+          <p className="text-sm text-text-dim">
+            Clear everything logged for <span className="font-medium text-text">{dayName}</span> and start fresh?
+            This deletes the in-progress session and its sets — finished sessions aren’t affected.
+          </p>
+          <div className="flex gap-2">
+            <Button variant="surface" size="lg" className="flex-1" onClick={() => setResetOpen(false)} disabled={resetting}>
+              Cancel
+            </Button>
+            <Button variant="danger" size="lg" className="flex-1" onClick={handleReset} disabled={resetting}>
+              {resetting ? <Loader2 className="animate-spin" size={18} /> : 'Reset'}
+            </Button>
+          </div>
+        </div>
+      </BottomSheet>
     </div>
   );
 }
@@ -324,6 +362,18 @@ function DayPicker({
   return (
     <BottomSheet open={open} onOpenChange={onOpenChange} title="Pick a session">
       <div className="space-y-4 py-1">
+        <Link
+          href="/today/custom"
+          className="tap flex items-center gap-3 rounded-xl border border-ember-2/30 bg-ember-grad-soft px-3.5 py-3"
+        >
+          <span className="grid h-8 w-8 place-items-center rounded-lg bg-ember-grad text-black">
+            <Plus size={18} />
+          </span>
+          <div className="flex-1">
+            <div className="font-semibold">Start a custom workout</div>
+            <div className="text-[11px] text-text-faint">Freestyle — add any exercises, off-program</div>
+          </div>
+        </Link>
         {Object.entries(byBlock).map(([block, ds]) => (
           <div key={block}>
             <div className="mb-1.5 text-[11px] uppercase tracking-wide text-text-faint">{block}</div>

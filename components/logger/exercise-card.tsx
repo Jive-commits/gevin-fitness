@@ -49,6 +49,7 @@ export function ExerciseCard({
   onAddSet,
   onRemoveSet,
   onSwap,
+  onRemoveExercise,
   prCelebrating,
 }: {
   slot: LoggerSlot;
@@ -60,7 +61,8 @@ export function ExerciseCard({
   onToggleComplete: (setNumber: number) => void;
   onAddSet: (isWarmup: boolean) => void;
   onRemoveSet: (setNumber: number) => void;
-  onSwap: () => void;
+  onSwap?: () => void;
+  onRemoveExercise?: () => void;
   prCelebrating: boolean;
 }) {
   const working = sets.filter((s) => !s.isWarmup);
@@ -227,7 +229,7 @@ export function ExerciseCard({
                     size="lg"
                     emberWhenSet
                   />
-                  <div className="flex items-start justify-center gap-5">
+                  <div className="flex w-full flex-wrap items-start justify-center gap-x-2 gap-y-3">
                     <Stepper
                       label="Reps"
                       value={active.reps}
@@ -235,6 +237,7 @@ export function ExerciseCard({
                       step={1}
                       min={0}
                       max={100}
+                      compact
                     />
                     <Stepper
                       label="RPE"
@@ -243,6 +246,7 @@ export function ExerciseCard({
                       step={0.5}
                       min={5}
                       max={10}
+                      compact
                     />
                   </div>
                 </div>
@@ -287,14 +291,24 @@ export function ExerciseCard({
                 </div>
               )}
 
-              {/* swap + warm-up */}
+              {/* swap / remove + warm-up */}
               <div className="mt-3 flex gap-2">
-                <button
-                  onClick={onSwap}
-                  className="tap flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border surface-2 py-2.5 text-xs font-medium text-text-dim"
-                >
-                  <ArrowLeftRight size={14} /> Swap
-                </button>
+                {onSwap && (
+                  <button
+                    onClick={onSwap}
+                    className="tap flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border surface-2 py-2.5 text-xs font-medium text-text-dim"
+                  >
+                    <ArrowLeftRight size={14} /> Swap
+                  </button>
+                )}
+                {onRemoveExercise && (
+                  <button
+                    onClick={onRemoveExercise}
+                    className="tap flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border surface-2 py-2.5 text-xs font-medium text-text-dim"
+                  >
+                    <Trash2 size={14} /> Remove
+                  </button>
+                )}
                 <button
                   onClick={() => onAddSet(true)}
                   className="tap flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border surface-2 py-2.5 text-xs font-medium text-text-dim"
