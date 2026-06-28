@@ -22,12 +22,18 @@ const KG_PER_LB = 0.45359237;
 const args = process.argv.slice(2);
 const csvPath = args.find((a) => !a.startsWith('--'));
 const DRY = args.includes('--dry-run');
+// --skip-if-imported: no-op when a prior CSV import already exists (one-time on deploy).
+// --soft-fail: never exit non-zero (so a deploy's import step can't break startup).
+const SKIP_IF_IMPORTED = args.includes('--skip-if-imported');
+const SOFT_FAIL = args.includes('--soft-fail');
 const unitsArg = (args[args.indexOf('--units') + 1] || process.env.IMPORT_UNITS || 'lb').toLowerCase();
 const UNITS = unitsArg === 'kg' ? 'kg' : 'lb';
 
+function done(code) { prisma.$disconnect(); process.exit(SOFT_FAIL ? 0 : code); }
+
 if (!csvPath) {
-  console.error('Usage: node scripts/import-history.js <file.csv> [--units lb|kg] [--dry-run]');
-  process.exit(1);
+  console.error('Usage: node scripts/import-history.js <file.csv> [--units lb|kg] [--dry-run] [--skip-if-imported] [--soft-fail]');
+  process.exit(SOFT_FAIL ? 0 : 1);
 }
 
 // ---------- CSV ----------
@@ -222,6 +228,19 @@ function slugify(s) {
 
 async function main() {
   console.log(`📥 FORGE import — units=${UNITS}${DRY ? ' (dry-run)' : ''}`);
+
+  if (!fs.existsSync(csvPath)) {
+    console.log(`  no CSV at ${csvPath} — nothing to import, skipping.`);
+    return done(0);
+  }
+  if (SKIP_IF_IMPORTED && !DRY) {
+    const existing = await prisma.workoutSession.count({ where: { notes: 'csv-import' } });
+    if (existing > 0) {
+      console.log(`  history already imported (${existing} sessions) — skipping.`);
+      return done(0);
+    }
+  }
+
   const text = fs.readFileSync(csvPath, 'utf8');
   const rows = parseCSV(text);
   const header = rows[0].map((h) => h.trim());
@@ -349,4 +368,10 @@ async function main() {
   console.log(`\n✅ ${DRY ? 'Would import' : 'Imported'} ${sessionCount} sessions · ${setCount} sets`);
 }
 
-main().then(() => prisma.$disconnect()).catch((e) => { console.error('Import failed:', e); prisma.$disconnect(); process.exit(1); });
+main()
+  .then(() => prisma.$disconnect())
+  .catch((e) => {
+    console.error('Import failed:', e.message || e);
+    prisma.$disconnect();
+    process.exit(SOFT_FAIL ? 0 : 1);
+  });
