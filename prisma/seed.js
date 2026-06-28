@@ -174,7 +174,7 @@ async function main() {
   console.log(`  ✓ program "${program.name}" with ${slotCount} slots upserted`);
 
   // -------- 4. UserSettings (created-if-missing; preferences preserved) --------
-  const defaultUnits = (process.env.DEFAULT_UNITS || 'kg').toLowerCase() === 'lb' ? 'lb' : 'kg';
+  const defaultUnits = (process.env.DEFAULT_UNITS || 'lb').toLowerCase() === 'kg' ? 'kg' : 'lb';
   await prisma.userSettings.upsert({
     where: { id: 'default' },
     create: {

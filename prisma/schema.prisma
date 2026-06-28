@@ -92,8 +92,9 @@ model SlotExercise {
 // ---------- LOGGING ----------
 model WorkoutSession {
   id          String   @id @default(cuid())
-  dayId       String
-  day         Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  dayId       String? // null = freestyle / off-program custom workout
+  day         Day?     @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  name        String? // optional label for custom workouts
   date        DateTime @default(now())
   notes       String?
   completed   Boolean  @default(false)
@@ -135,7 +136,7 @@ model BodyMetric {
 // ---------- SETTINGS (single-row app config) ----------
 model UserSettings {
   id              String      @id @default("default")
-  units           String      @default("kg") // "kg" | "lb"
+  units           String      @default("lb") // "kg" | "lb"
   backSafeOnly    Boolean     @default(true)
   myEquipmentOnly Boolean     @default(true)
   availableEquipment Equipment[]
