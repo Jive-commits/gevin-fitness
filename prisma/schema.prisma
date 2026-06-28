@@ -1,0 +1,217 @@
+// FORGE — precision strength-training tracker
+// Single-user now; userId-ready for a clean multi-user migration later.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- LIBRARY ----------
+model Exercise {
+  id               String          @id @default(cuid())
+  slug             String          @unique
+  name             String
+  primaryMuscle    Muscle
+  secondaryMuscles Muscle[]
+  movementPattern  MovementPattern
+  category         Category // COMPOUND | ISOLATION
+  equipment        Equipment[] // every implement it can be done with
+  unilateral       Boolean         @default(false)
+  spinalLoad       SpinalLoad // NONE | LOW | MODERATE | HIGH
+  isBackSafe       Boolean // derived convenience flag
+  defaultRepRange  String? // "8-10"
+  cues             String? // short coaching cues
+  tempoNote        String?
+  videoUrl         String?
+  isCustom         Boolean         @default(false) // user-created; never touched by seed
+  slotExercises    SlotExercise[]
+  setLogs          SetLog[]
+  swappedInto      SlotExercise[]  @relation("DefaultExercise")
+}
+
+// ---------- PROGRAM TEMPLATE ----------
+model Program {
+  id          String  @id @default(cuid())
+  slug        String  @unique
+  name        String
+  author      String?
+  description String?
+  blocks      Block[]
+}
+
+model Block {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  programId String
+  program   Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  name      String // "Block 1 — Technique & Volume"
+  order     Int
+  weeks     Int // 8
+  phase     String // "TECHNIQUE_VOLUME" | "PEAKING_INTENSITY"
+  notes     String?
+  days      Day[]
+}
+
+model Day {
+  id         String           @id @default(cuid())
+  slug       String           @unique
+  blockId    String
+  block      Block            @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  name       String // "Legs #1"
+  order      Int // 1..6
+  splitType  SplitType // LEGS | PUSH | PULL
+  muscleTags Muscle[]
+  slots      SlotExercise[]
+  sessions   WorkoutSession[]
+}
+
+model SlotExercise {
+  id                String   @id @default(cuid())
+  slug              String   @unique
+  dayId             String
+  day               Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  order             Int
+  exerciseId        String // CURRENT (user-swappable)
+  exercise          Exercise @relation(fields: [exerciseId], references: [id])
+  defaultExerciseId String // canonical, for "reset to default"
+  defaultExercise   Exercise @relation("DefaultExercise", fields: [defaultExerciseId], references: [id])
+  sets              Int
+  repScheme         String // "8-10", "5", "20/leg", "30s"
+  targetRpe         String? // "7", "7-8"
+  restSeconds       Int
+  supersetGroup     String? // "A"
+  supersetOrder     Int? // 1,2,3 -> A1/A2/A3
+  notes             String?
+  replacesNote      String?
+}
+
+// ---------- LOGGING ----------
+model WorkoutSession {
+  id          String   @id @default(cuid())
+  dayId       String
+  day         Day      @relation(fields: [dayId], references: [id], onDelete: Cascade)
+  date        DateTime @default(now())
+  notes       String?
+  completed   Boolean  @default(false)
+  durationSec Int?
+  sets        SetLog[]
+
+  @@index([dayId])
+  @@index([date])
+}
+
+model SetLog {
+  id        String         @id @default(cuid())
+  sessionId String
+  session   WorkoutSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  exerciseId String
+  exercise  Exercise       @relation(fields: [exerciseId], references: [id])
+  slotId    String? // which prescribed slot it came from
+  setNumber Int
+  weightKg  Float?
+  reps      Int?
+  rpe       Float?
+  isWarmup  Boolean        @default(false)
+  completed Boolean        @default(false)
+  createdAt DateTime       @default(now())
+
+  @@unique([sessionId, slotId, setNumber])
+  @@index([exerciseId])
+  @@index([sessionId])
+}
+
+model BodyMetric {
+  id       String   @id @default(cuid())
+  date     DateTime @default(now())
+  weightKg Float
+
+  @@index([date])
+}
+
+// ---------- SETTINGS (single-row app config) ----------
+model UserSettings {
+  id              String      @id @default("default")
+  units           String      @default("kg") // "kg" | "lb"
+  backSafeOnly    Boolean     @default(true)
+  myEquipmentOnly Boolean     @default(true)
+  availableEquipment Equipment[]
+  defaultRestSec  Int         @default(120)
+  incrementUpperKg Float      @default(2.5)
+  incrementLowerKg Float      @default(5)
+  activeProgramSlug String?
+  currentDayOrder Int         @default(1) // schedule cursor 1..6
+  activeBlockSlug String?
+  bodyweightKg    Float?
+  updatedAt       DateTime    @updatedAt
+}
+
+enum Muscle {
+  QUADS
+  HAMSTRINGS
+  GLUTES
+  CALVES
+  CHEST
+  LATS
+  UPPER_BACK
+  TRAPS
+  FRONT_DELTS
+  SIDE_DELTS
+  REAR_DELTS
+  BICEPS
+  TRICEPS
+  FOREARMS
+  ABS
+  OBLIQUES
+}
+
+enum MovementPattern {
+  SQUAT
+  HINGE
+  LUNGE
+  HORIZONTAL_PUSH
+  VERTICAL_PUSH
+  HORIZONTAL_PULL
+  VERTICAL_PULL
+  ISOLATION
+  CARRY
+  CORE
+  CALF_RAISE
+}
+
+enum Category {
+  COMPOUND
+  ISOLATION
+}
+
+enum Equipment {
+  BARBELL
+  DUMBBELL
+  SMITH_MACHINE
+  CABLE
+  MACHINE
+  BODYWEIGHT
+  BAND
+  KETTLEBELL
+  EZ_BAR
+  PULL_UP_BAR
+  BENCH
+  SWISS_BALL
+  SLIDER
+}
+
+enum SpinalLoad {
+  NONE
+  LOW
+  MODERATE
+  HIGH
+}
+
+enum SplitType {
+  LEGS
+  PUSH
+  PULL
+}

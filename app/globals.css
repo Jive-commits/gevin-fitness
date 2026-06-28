@@ -1,0 +1,159 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Surfaces */
+  --bg: #0a0a0c;
+  --surface: #131318;
+  --surface-2: #1c1c23;
+  --border: #2a2a33;
+
+  /* Text */
+  --text: #f4f3f0;
+  --text-dim: #9b9aa5;
+  --text-faint: #5e5d68;
+
+  /* Ember = effort / intensity / load */
+  --ember-1: #ffb23d;
+  --ember-2: #ff6a2c;
+  --ember-3: #ff2d55;
+
+  /* Cool = back-safe / completed / recovery / success */
+  --mint: #2de2b6;
+  --mint-dim: #18a88a;
+
+  /* Ice = secondary data / links */
+  --ice: #5ba8ff;
+
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-top: env(safe-area-inset-top, 0px);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  /* Faint cool vignette so near-black never looks flat. */
+  background-image: radial-gradient(
+      120% 80% at 50% -10%,
+      rgba(91, 168, 255, 0.05),
+      transparent 60%
+    ),
+    radial-gradient(100% 60% at 100% 0%, rgba(255, 106, 44, 0.04), transparent 55%);
+  background-attachment: fixed;
+  min-height: 100dvh;
+  overscroll-behavior-y: none;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* All numeric data uses mono with tabular figures — the signature texture. */
+  .num {
+    font-family: var(--font-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1, 'zero' 1;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ice);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  ::selection {
+    background: rgba(255, 106, 44, 0.3);
+    color: var(--text);
+  }
+}
+
+@layer components {
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 17px;
+  }
+
+  .surface-2 {
+    background-color: var(--surface-2);
+  }
+
+  .text-gradient-ember {
+    background: var(--ember-grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+
+  /* Hairline divider */
+  .hairline {
+    border-color: var(--border);
+  }
+
+  .tap {
+    transition: transform 0.08s ease;
+  }
+  .tap:active {
+    transform: scale(0.97);
+  }
+
+  /* Hide scrollbar but keep scrollability for horizontal chip rows */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom scrollbar for the dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-2);
+  border-radius: 999px;
+}
+
+/* Number steppers / inputs: strip native spinners */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
