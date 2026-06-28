@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="ember" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB23D"/>
+      <stop offset="0.55" stop-color="#FF6A2C"/>
+      <stop offset="1" stop-color="#FF2D55"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0A0A0C"/>
+  <rect x="1" y="1" width="510" height="510" rx="111" stroke="#2A2A33" stroke-width="2"/>
+  <!-- Stylized barbell / "F" mark -->
+  <g stroke="url(#ember)" stroke-width="34" stroke-linecap="round">
+    <line x1="150" y1="146" x2="362" y2="146"/>
+    <line x1="150" y1="146" x2="150" y2="366"/>
+    <line x1="150" y1="256" x2="300" y2="256"/>
+  </g>
+  <circle cx="362" cy="146" r="20" fill="url(#ember)"/>
+  <circle cx="300" cy="256" r="16" fill="#2DE2B6"/>
+</svg>
