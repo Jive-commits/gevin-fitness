@@ -7,7 +7,7 @@ export function GET() {
     name: 'FORGE — Strength Tracker',
     short_name: 'FORGE',
     description: 'A precision instrument for serious lifting.',
-    start_url: '/today',
+    start_url: '/home',
     display: 'standalone',
     background_color: '#0a0a0c',
     theme_color: '#0a0a0c',

@@ -113,6 +113,34 @@ No Docker? Point `DATABASE_URL` at any local Postgres and run the same migrate/s
 | `npm run db:seed`  | Run the idempotent seed against `DATABASE_URL`               |
 | `npm run db:reset` | **Drops and recreates** the DB, re-applies migrations + seed |
 
+## Importing history from another app
+
+`scripts/import-history.js` imports a per-set CSV export from another tracker
+(columns: `Workout Start, Workout End, Exercise, Weight, Reps, …, Category, Name`).
+It groups rows into sessions, **matches each exercise to a seeded FORGE lift**
+(curated aliases → exact → fuzzy token overlap), **creates custom exercises for
+anything without a close match**, and handles **weightless movements** (push-ups,
+dips, planks — logged with reps only) and assisted/negative-weight machines.
+
+```bash
+# local DB
+npm run import:history -- /path/to/export.csv --units lb
+
+# straight into your Railway database (grab DATABASE_URL from the Railway dashboard)
+DATABASE_URL="postgres://…railway…" npm run import:history -- export.csv --units lb
+
+# preview the matching without writing anything
+npm run import:history -- export.csv --units lb --dry-run
+```
+
+- `--units lb|kg` tells the importer what unit the CSV weights are in (default `lb`);
+  everything is stored canonically in kg.
+- **Idempotent:** re-running deletes prior CSV-imported sessions (marked
+  `notes='csv-import'`) and reuses custom exercises by slug — your manually-logged
+  sessions are never touched and nothing is duplicated.
+- Imported sets feed e1RM trends, PRs, volume, and history exactly like sets you log
+  in the app.
+
 ## Resetting the database
 
 - **Local:** `npm run db:reset` (destructive — wipes all data, re-migrates, re-seeds).

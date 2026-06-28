@@ -8,6 +8,7 @@
     "start": "prisma migrate deploy && node prisma/seed.js && next start",
     "lint": "next lint",
     "db:seed": "node prisma/seed.js",
+    "import:history": "node scripts/import-history.js",
     "db:reset": "prisma migrate reset --force",
     "db:migrate": "prisma migrate dev",
     "postinstall": "prisma generate"

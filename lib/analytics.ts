@@ -224,7 +224,14 @@ function weekStartTs(ts: number): number {
 }
 
 export async function getWeeklyVolumeByMuscle(weeks = 8): Promise<WeeklyMuscleVolume[]> {
-  const since = Date.now() - weeks * WEEK;
+  // Anchor on the most recent session, not "now", so imported/older history still shows.
+  const latest = await prisma.workoutSession.findFirst({
+    where: { completed: true },
+    orderBy: { date: 'desc' },
+    select: { date: true },
+  });
+  if (!latest) return [];
+  const since = latest.date.getTime() - weeks * WEEK;
   const sets = await prisma.setLog.findMany({
     where: { completed: true, isWarmup: false, weightKg: { not: null }, reps: { not: null }, session: { date: { gte: new Date(since) } } },
     select: { weightKg: true, reps: true, session: { select: { date: true } }, exercise: { select: { primaryMuscle: true } } },
@@ -289,6 +296,83 @@ export async function getConsistency(): Promise<{ sessions: number; thisWeek: nu
 export async function getBodyweightSeries(): Promise<{ ts: number; weightKg: number }[]> {
   const rows = await prisma.bodyMetric.findMany({ orderBy: { date: 'asc' }, select: { date: true, weightKg: true } });
   return rows.map((r) => ({ ts: r.date.getTime(), weightKg: r.weightKg }));
+}
+
+// ---------- Home dashboard ----------
+
+function utcDayStart(ts: number): number {
+  const d = new Date(ts);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+export type DayActivity = { ts: number; sessions: number; sets: number; volumeKg: number };
+
+/** Per-day training activity for the last `days` days (zero-filled), for the heatmap. */
+export async function getDailyActivity(days = 35): Promise<DayActivity[]> {
+  const todayStart = utcDayStart(Date.now());
+  const since = todayStart - (days - 1) * DAY;
+  const sets = await prisma.setLog.findMany({
+    where: {
+      completed: true,
+      isWarmup: false,
+      weightKg: { not: null },
+      reps: { not: null },
+      session: { date: { gte: new Date(since) } },
+    },
+    select: { sessionId: true, weightKg: true, reps: true, session: { select: { date: true } } },
+  });
+
+  const byDay = new Map<number, { sessions: Set<string>; sets: number; volumeKg: number }>();
+  for (const s of sets) {
+    const day = utcDayStart(s.session.date.getTime());
+    const e = byDay.get(day) ?? { sessions: new Set(), sets: 0, volumeKg: 0 };
+    e.sessions.add(s.sessionId);
+    e.sets += 1;
+    e.volumeKg += s.weightKg! * s.reps!;
+    byDay.set(day, e);
+  }
+
+  const out: DayActivity[] = [];
+  for (let ts = since; ts <= todayStart; ts += DAY) {
+    const e = byDay.get(ts);
+    out.push({ ts, sessions: e?.sessions.size ?? 0, sets: e?.sets ?? 0, volumeKg: e?.volumeKg ?? 0 });
+  }
+  return out;
+}
+
+export type Totals = { sessions: number; sets: number; tonnageKg: number; exercises: number; daysTrained: number };
+
+export async function getTotals(): Promise<Totals> {
+  const [sessions, sets] = await Promise.all([
+    prisma.workoutSession.count({ where: { completed: true } }),
+    prisma.setLog.findMany({
+      where: { completed: true, isWarmup: false, weightKg: { not: null }, reps: { not: null } },
+      select: { weightKg: true, reps: true, exerciseId: true, session: { select: { date: true } } },
+    }),
+  ]);
+  const tonnageKg = sets.reduce((sum, s) => sum + s.weightKg! * s.reps!, 0);
+  const exercises = new Set(sets.map((s) => s.exerciseId)).size;
+  const daysTrained = new Set(sets.map((s) => utcDayStart(s.session.date.getTime()))).size;
+  return { sessions, sets: sets.length, tonnageKg, exercises, daysTrained };
+}
+
+/** Most recently-achieved all-time-best e1RMs, across all lifts. */
+export async function getRecentPRs(limit = 4): Promise<{ exerciseId: string; slug: string; name: string; e1RM: number; ts: number }[]> {
+  const sets = await prisma.setLog.findMany({
+    where: { completed: true, isWarmup: false, weightKg: { not: null }, reps: { not: null } },
+    select: { exerciseId: true, weightKg: true, reps: true, session: { select: { date: true } }, exercise: { select: { slug: true, name: true } } },
+  });
+  const best = new Map<string, { e1RM: number; ts: number; slug: string; name: string }>();
+  for (const s of sets) {
+    const e = epley1RM(s.weightKg!, s.reps!);
+    const ts = s.session.date.getTime();
+    const cur = best.get(s.exerciseId);
+    if (!cur || e > cur.e1RM + 0.001) best.set(s.exerciseId, { e1RM: e, ts, slug: s.exercise.slug, name: s.exercise.name });
+  }
+  return [...best.entries()]
+    .map(([exerciseId, v]) => ({ exerciseId, ...v }))
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, limit);
 }
 
 /** Exercises that actually have logged data — for the Progress exercise picker. */

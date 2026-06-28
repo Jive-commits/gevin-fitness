@@ -18,6 +18,7 @@
   --ember-1: #ffb23d;
   --ember-2: #ff6a2c;
   --ember-3: #ff2d55;
+  --ember-grad: linear-gradient(120deg, #ffb23d, #ff2d55);
 
   /* Cool = back-safe / completed / recovery / success */
   --mint: #2de2b6;
@@ -95,6 +96,7 @@ body {
   }
 
   .text-gradient-ember {
+    display: inline-block;
     background: var(--ember-grad);
     -webkit-background-clip: text;
     background-clip: text;
