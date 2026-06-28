@@ -74,6 +74,10 @@ export function CustomLogger({
   const ensurePromiseRef = useRef<Promise<string> | null>(null);
   const startMsRef = useRef<number | null>(initialStartMs);
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const slotSetsRef = useRef(slotSets);
+  useEffect(() => {
+    slotSetsRef.current = slotSets;
+  }, [slotSets]);
 
   const ensureId = useCallback(async (): Promise<string> => {
     if (sessionIdRef.current) return sessionIdRef.current;
@@ -124,7 +128,10 @@ export function CustomLogger({
       const updated = rows.find((s) => s.setNumber === setNumber)!;
       const key = `${slotId}:${setNumber}`;
       if (debounceRef.current[key]) clearTimeout(debounceRef.current[key]);
-      debounceRef.current[key] = setTimeout(() => void persist(slotId, updated), 650);
+      debounceRef.current[key] = setTimeout(() => {
+        const latest = slotSetsRef.current[slotId]?.find((s) => s.setNumber === setNumber);
+        if (latest) void persist(slotId, latest);
+      }, 650);
       return { ...prev, [slotId]: rows };
     });
   }
@@ -132,6 +139,8 @@ export function CustomLogger({
   async function toggleComplete(slotId: string, setNumber: number) {
     const current = slotSets[slotId].find((s) => s.setNumber === setNumber)!;
     const updated = { ...current, completed: !current.completed };
+    const key = `${slotId}:${setNumber}`;
+    if (debounceRef.current[key]) clearTimeout(debounceRef.current[key]);
     setSlotSets((prev) => ({ ...prev, [slotId]: prev[slotId].map((s) => (s.setNumber === setNumber ? updated : s)) }));
     if (updated.completed) {
       const restSec = slotMeta[slotId].restSeconds || defaultRestSec;

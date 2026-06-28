@@ -375,6 +375,52 @@ export async function getRecentPRs(limit = 4): Promise<{ exerciseId: string; slu
     .slice(0, limit);
 }
 
+export type SessionSummary = {
+  id: string;
+  ts: number;
+  dayTs: number;
+  name: string;
+  exercises: number;
+  sets: number;
+  volumeKg: number;
+  durationSec: number | null;
+};
+
+/** Recent completed sessions (newest first) for the History list. */
+export async function getRecentSessions(limit = 60): Promise<SessionSummary[]> {
+  const sessions = await prisma.workoutSession.findMany({
+    where: { completed: true },
+    orderBy: { date: 'desc' },
+    take: limit,
+    include: {
+      day: { select: { name: true } },
+      sets: { select: { exerciseId: true, weightKg: true, reps: true, isWarmup: true, completed: true } },
+    },
+  });
+  return sessions.map((s) => {
+    const exs = new Set<string>();
+    let sets = 0;
+    let volumeKg = 0;
+    for (const set of s.sets) {
+      if (set.completed && !set.isWarmup) {
+        exs.add(set.exerciseId);
+        sets++;
+        if (set.weightKg && set.reps) volumeKg += set.weightKg * set.reps;
+      }
+    }
+    return {
+      id: s.id,
+      ts: s.date.getTime(),
+      dayTs: utcDayStart(s.date.getTime()),
+      name: s.name ?? s.day?.name ?? 'Workout',
+      exercises: exs.size,
+      sets,
+      volumeKg,
+      durationSec: s.durationSec,
+    };
+  });
+}
+
 /** Exercises that actually have logged data — for the Progress exercise picker. */
 export async function getLoggedExercises(): Promise<{ id: string; slug: string; name: string; isCustom: boolean }[]> {
   const rows = await prisma.setLog.findMany({

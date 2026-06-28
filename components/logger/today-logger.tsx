@@ -82,6 +82,12 @@ export function TodayLogger({
   const ensurePromiseRef = useRef<Promise<string> | null>(null);
   const startMsRef = useRef<number | null>(initialStartMs);
   const debounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  // Mirror of slotSets so a debounced save reads the LATEST set state at fire time
+  // (prevents a stale field-edit save from reverting a just-completed set).
+  const slotSetsRef = useRef(slotSets);
+  useEffect(() => {
+    slotSetsRef.current = slotSets;
+  }, [slotSets]);
 
   const ensureId = useCallback(async (): Promise<string> => {
     if (sessionIdRef.current) return sessionIdRef.current;
@@ -137,7 +143,11 @@ export function TodayLogger({
       if (opts?.immediate) {
         void persist(slotId, updated);
       } else {
-        debounceRef.current[key] = setTimeout(() => void persist(slotId, updated), 650);
+        // Read the freshest state at fire time so we never clobber a completion.
+        debounceRef.current[key] = setTimeout(() => {
+          const latest = slotSetsRef.current[slotId]?.find((s) => s.setNumber === setNumber);
+          if (latest) void persist(slotId, latest);
+        }, 650);
       }
       return { ...prev, [slotId]: rows };
     });
@@ -147,6 +157,9 @@ export function TodayLogger({
     const current = slotSets[slotId].find((s) => s.setNumber === setNumber)!;
     const nextCompleted = !current.completed;
     const updated = { ...current, completed: nextCompleted };
+    // Cancel any pending field-edit save for this set so it can't revert completion.
+    const key = `${slotId}:${setNumber}`;
+    if (debounceRef.current[key]) clearTimeout(debounceRef.current[key]);
     setSlotSets((prev) => ({
       ...prev,
       [slotId]: prev[slotId].map((s) => (s.setNumber === setNumber ? updated : s)),

@@ -6,6 +6,7 @@ import { VolumeHeatChart } from '@/components/charts/volume-heat-chart';
 import { Sparkline } from '@/components/charts/sparkline';
 import { TrendPill } from '@/components/exercise/trend-pill';
 import { BodyweightLogger } from '@/components/progress/bodyweight-logger';
+import { ExercisePickerBar } from '@/components/progress/exercise-picker-bar';
 import { getSettings } from '@/lib/settings';
 import {
   getLoggedExercises,
@@ -70,20 +71,7 @@ export default async function ProgressPage({ searchParams }: { searchParams: { e
                 )}
               </div>
 
-              <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 no-scrollbar">
-                {logged.map((e) => (
-                  <Link
-                    key={e.id}
-                    href={`/progress?ex=${e.slug}`}
-                    scroll={false}
-                    className={`tap shrink-0 whitespace-nowrap rounded-pill border px-3 py-1.5 text-[13px] font-medium ${
-                      selected?.id === e.id ? 'border-ember-2/40 bg-ember-2/12 text-ember-1' : 'border-border surface-2 text-text-dim'
-                    }`}
-                  >
-                    {e.name}
-                  </Link>
-                ))}
-              </div>
+              <ExercisePickerBar exercises={logged} selectedSlug={selected?.slug} />
 
               {series.length > 0 ? (
                 <>
