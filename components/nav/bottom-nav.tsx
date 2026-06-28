@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Flame, CalendarDays, Library, LineChart, Settings } from 'lucide-react';
+import { House, Flame, CalendarDays, Library, LineChart, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS = [
+  { href: '/home', label: 'Home', icon: House },
   { href: '/today', label: 'Today', icon: Flame },
   { href: '/program', label: 'Program', icon: CalendarDays },
   { href: '/library', label: 'Library', icon: Library },
@@ -22,7 +23,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/85 backdrop-blur-xl"
       style={{ paddingBottom: 'var(--safe-bottom)' }}
     >
-      <div className="mx-auto grid max-w-xl grid-cols-5">
+      <div className="mx-auto grid max-w-xl grid-cols-6">
         {TABS.map((tab) => {
           const active =
             pathname === tab.href || pathname.startsWith(tab.href + '/');

@@ -34,3 +34,6 @@ yarn-error.log*
 
 # prisma
 /prisma/dev.db
+
+# personal data exports (don't commit history CSVs)
+*.csv

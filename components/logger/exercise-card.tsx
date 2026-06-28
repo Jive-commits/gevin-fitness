@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, ChevronDown, ArrowLeftRight, Plus, Flame, Trash2, Sparkles, TrendingUp } from 'lucide-react';
+import { Check, ChevronDown, ArrowLeftRight, Plus, Flame, Trash2, Sparkles, TrendingUp, LineChart } from 'lucide-react';
 import { Stepper } from '@/components/ui/stepper';
+import { ExerciseProgressSheet } from '@/components/logger/exercise-progress-sheet';
 import { kgToDisplay, displayToKg, roundDisplay, loadStep, formatWeight, type Units } from '@/lib/units';
 import type { ProgressionHint } from '@/lib/progression';
 import type { ExerciseLite } from '@/lib/types';
@@ -71,6 +72,7 @@ export function ExerciseCard({
 
   const firstIncomplete = sets.findIndex((s) => !s.completed);
   const [activeIdx, setActiveIdx] = useState(firstIncomplete >= 0 ? firstIncomplete : 0);
+  const [progressOpen, setProgressOpen] = useState(false);
   const active = sets[activeIdx] ?? sets[0];
 
   const isLower = LOWER.includes(slot.exercise.primaryMuscle);
@@ -291,8 +293,16 @@ export function ExerciseCard({
                 </div>
               )}
 
+              {/* in-logger progress peek */}
+              <button
+                onClick={() => setProgressOpen(true)}
+                className="tap mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-ice/25 bg-ice/[0.07] py-2.5 text-xs font-medium text-ice"
+              >
+                <LineChart size={15} /> Progress &amp; last sessions
+              </button>
+
               {/* swap / remove + warm-up */}
-              <div className="mt-3 flex gap-2">
+              <div className="mt-2 flex gap-2">
                 {onSwap && (
                   <button
                     onClick={onSwap}
@@ -341,6 +351,14 @@ export function ExerciseCard({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ExerciseProgressSheet
+        open={progressOpen}
+        onOpenChange={setProgressOpen}
+        exerciseId={slot.exercise.id}
+        exerciseName={slot.exercise.name}
+        units={units}
+      />
     </motion.div>
   );
 }

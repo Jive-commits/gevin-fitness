@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get('next') || '/today';
+  const next = params.get('next') || '/home';
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
