@@ -115,6 +115,15 @@ No Docker? Point `DATABASE_URL` at any local Postgres and run the same migrate/s
 
 ## Importing history from another app
 
+> **Bundled one-time import:** `prisma/seed-data/history-import.csv` ships in this repo
+> and the deploy `start` command runs it **once** automatically
+> (`… --skip-if-imported --soft-fail`): it imports on the first deploy that finds an
+> empty history, skips on every deploy after, and never fails the boot. Set
+> `IMPORT_UNITS=kg` on the service if that CSV's weights are in kg (default `lb`).
+> To re-import an updated CSV, replace the file and clear the prior import
+> (`DELETE FROM "WorkoutSession" WHERE notes='csv-import'`) or run the command below.
+
+
 `scripts/import-history.js` imports a per-set CSV export from another tracker
 (columns: `Workout Start, Workout End, Exercise, Weight, Reps, …, Category, Name`).
 It groups rows into sessions, **matches each exercise to a seeded FORGE lift**

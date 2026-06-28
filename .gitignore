@@ -37,3 +37,5 @@ yarn-error.log*
 
 # personal data exports (don't commit history CSVs)
 *.csv
+# ...except the one bundled for the one-time deploy import
+!prisma/seed-data/history-import.csv
