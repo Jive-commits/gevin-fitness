@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { Flame, CalendarCheck, Dumbbell, Trophy, ChevronRight, Plus, Layers, TrendingUp, Activity } from 'lucide-react';
-import { ActivityCalendar } from '@/components/home/activity-calendar';
+import { HomeCalendar } from '@/components/home/home-calendar';
 import { getSettings } from '@/lib/settings';
 import { getActiveDay } from '@/lib/queries';
 import { getDailyActivity, getTotals, getRecentPRs, getConsistency } from '@/lib/analytics';
@@ -74,11 +74,17 @@ export default async function HomePage() {
       <section className="mb-4 rounded-card border border-border bg-surface p-4">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-display text-base font-semibold">Training activity</h2>
-          <span className="num inline-flex items-center gap-1 rounded-pill bg-ember-2/12 px-2 py-0.5 text-[11px] font-medium text-ember-1">
-            <Flame size={11} /> {consistency.streakWeeks} wk
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="num inline-flex items-center gap-1 rounded-pill bg-ember-2/12 px-2 py-0.5 text-[11px] font-medium text-ember-1">
+              <Flame size={11} /> {consistency.streakWeeks} wk
+            </span>
+            <Link href="/history" className="tap inline-flex items-center gap-0.5 text-[11px] font-medium text-ice">
+              History <ChevronRight size={12} />
+            </Link>
+          </div>
         </div>
-        <ActivityCalendar days={daily} />
+        <HomeCalendar days={daily} units={units} />
+        <p className="mt-2.5 text-[11px] text-text-faint">Tap a 🔥 day to see that workout.</p>
       </section>
 
       {/* Stats grid */}

@@ -46,27 +46,28 @@ export default async function TodayPage() {
       );
       const hint = computeHint(prev, slot.repScheme, slot.targetRpe, increment, settings.units);
 
+      // Merge any already-logged sets (from an in-progress session) onto the full
+      // prescription, so reloading mid-workout keeps both the logged sets AND the
+      // remaining to-do sets.
       const existing = session?.sets.filter((s) => s.slotId === slot.id) ?? [];
-      let sets: LoggerSet[];
-      if (existing.length > 0) {
-        sets = existing.map((s) => ({
-          setNumber: s.setNumber,
-          weightKg: s.weightKg,
-          reps: s.reps,
-          rpe: s.rpe,
-          isWarmup: s.isWarmup,
-          completed: s.completed,
-        }));
-      } else {
-        sets = Array.from({ length: slot.sets }, (_, i) => ({
-          setNumber: i + 1,
+      const byNum = new Map(existing.map((s) => [s.setNumber, s]));
+      const maxExisting = existing.reduce((m, s) => Math.max(m, s.setNumber), 0);
+      const count = Math.max(slot.sets, maxExisting);
+      const sets: LoggerSet[] = Array.from({ length: count }, (_, i) => {
+        const n = i + 1;
+        const e = byNum.get(n);
+        if (e) {
+          return { setNumber: n, weightKg: e.weightKg, reps: e.reps, rpe: e.rpe, isWarmup: e.isWarmup, completed: e.completed };
+        }
+        return {
+          setNumber: n,
           weightKg: last[i]?.weightKg ?? last[last.length - 1]?.weightKg ?? null,
           reps: last[i]?.reps ?? null,
           rpe: null,
           isWarmup: false,
           completed: false,
-        }));
-      }
+        };
+      });
 
       return {
         slot: {
