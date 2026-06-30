@@ -9,6 +9,8 @@ const nextConfig = {
   experimental: {
     // Prisma needs to be treated as an external in server components.
     serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+    // Enable instrumentation.ts (the in-process coach scheduler) on Next 14.
+    instrumentationHook: true,
     // Don't serve a stale client-cached RSC when navigating back to a dynamic
     // page (e.g. Today): always refetch so an in-progress session shows its
     // already-saved sets instead of the pre-workout empty state.

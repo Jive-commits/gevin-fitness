@@ -31,8 +31,12 @@ Built as a single full-stack **Next.js 14** service backed by **Railway PostgreS
 - **Progress** — per-lift estimated-1RM trend (Epley) with a linear-regression trendline,
   ▲/▬/▼ status pill and kg/week slope, auto-detected PRs, weekly volume heat by muscle,
   average-session-RPE trend, consistency/streak, and bodyweight.
-- **Settings** — units, available equipment (drives swap filtering), swap defaults,
-  default rest, load increments, logout.
+- **Coach** — an **AI accountability coach** that learns your goal and your *why*, watches
+  your training streak, and reaches out when you’re slipping. Pick a voice from **gentle
+  (Mentor, Stoic, Analyst) to viral-savage** (with an intensity dial), set quiet hours, and
+  it nudges you in-app and over **SMS**. See [The AI coach](#the-ai-coach) below.
+- **Settings** — set up the coach, units, available equipment (drives swap filtering),
+  swap defaults, default rest, load increments, logout.
 
 The **swap engine** ranks alternatives by muscle match, movement pattern, equipment, and
 back-safety, with a default "back-safe only" + "my equipment only" filter. Swaps are
@@ -69,6 +73,47 @@ lives in [`railway.json`](./railway.json).
 | `APP_PASSCODE`  | yes      | Single-user passcode for the cookie session                  |
 | `NODE_ENV`      | no       | `production` on Railway                                       |
 | `DEFAULT_UNITS` | no       | `kg` (default) or `lb`; only applied when seeding a fresh DB  |
+| `ANTHROPIC_API_KEY` | no   | Turns on AI-written coach messages (Claude Haiku). Without it, the coach uses on-brand templated copy. |
+| `TWILIO_ACCOUNT_SID` | no  | Twilio SID — enables outgoing **SMS** nudges + two-way replies. |
+| `TWILIO_AUTH_TOKEN`  | no  | Twilio auth token (also validates inbound webhook signatures). |
+| `TWILIO_FROM_NUMBER` | no  | Your Twilio number in E.164 (e.g. `+14155551234`). Or set `TWILIO_MESSAGING_SERVICE_SID`. |
+| `TWILIO_MESSAGING_SERVICE_SID` | no | Alternative to `TWILIO_FROM_NUMBER` — a Messaging Service. |
+| `CRON_SECRET`   | no       | Shared secret that protects `POST /api/coach/cron` (external schedulers). |
+| `COACH_SCHEDULER` | no     | `on`/`off`. The in-process scheduler runs by default in production; set `off` to rely solely on external cron. |
+
+The coach degrades gracefully: with **no** keys it still works fully **in-app** (live status,
+templated nudges, “pep talk”, “Test your coach”). Add `ANTHROPIC_API_KEY` for AI-written copy,
+and Twilio for real texts.
+
+## The AI coach
+
+A best-effort accountability system built around your *why*.
+
+- **Onboarding** (Settings → Accountability Coach): your goal, the real reason behind it, who
+  you’re becoming, what’s derailed you, and your weekly cadence. Optional **voice dictation**
+  (browser Web Speech API — no setup). This is the fuel the personas draw on.
+- **Personas**: `savage` (viral tough-love, 3-step intensity dial), `hype`, `mentor`, `zen`,
+  `analyst`. Each has hard safety rails — the heat is aimed at excuses, never the person.
+- **Triggers** (local-time + cadence aware): streak-at-risk, missed days, comebacks, streak
+  milestones, and fresh PRs. Cooldown + de-dupe keep it from nagging.
+- **Delivery**: in-app coach card + optional SMS. Quiet hours, explicit opt-in consent, and
+  `STOP`/`START`/`HELP` keyword handling are built in.
+
+**Scheduling** — automatic nudges fire from an in-process scheduler (`instrumentation.ts`,
+30-min cadence) with no extra setup on Railway. You can also/instead point any external cron at:
+
+```
+POST https://<your-app>/api/coach/cron        header  x-cron-secret: $CRON_SECRET
+```
+
+**Two-way SMS** — set your Twilio number’s inbound webhook to:
+
+```
+POST https://<your-app>/api/coach/sms
+```
+
+Requests are verified with Twilio’s signature; the lifter’s replies get an in-persona response,
+and `STOP` opts them out instantly.
 
 ## How seeding works
 

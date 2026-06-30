@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { COOKIE_NAME, isValidToken } from '@/lib/auth';
 
-// Paths that never require auth.
-const PUBLIC_PREFIXES = ['/login', '/api/auth', '/api/health'];
+// Paths that never require the session cookie. /api/coach/* is hit by Twilio +
+// external cron and is guarded by its own CRON_SECRET / Twilio-signature checks.
+const PUBLIC_PREFIXES = ['/login', '/api/auth', '/api/health', '/api/coach'];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
