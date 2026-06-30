@@ -1,21 +1,21 @@
-import Link from 'next/link';
-import { Sparkles, ChevronRight } from 'lucide-react';
 import { RestTimerProvider } from '@/components/logger/rest-timer';
-import { TodayLogger, type SlotData } from '@/components/logger/today-logger';
+import { GuidedLogger } from '@/components/logger/guided-logger';
+import type { SlotData } from '@/components/logger/today-logger';
 import {
   getActiveDay,
-  getDaysList,
   getAllExercises,
   getInProgressSession,
   getLastSetsForExercise,
 } from '@/lib/queries';
 import { getSettings } from '@/lib/settings';
+import { getConsistency } from '@/lib/analytics';
 import { computeHint, incrementForMuscle } from '@/lib/progression';
 import type { LoggerSet } from '@/components/logger/exercise-card';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
-export default async function TodayPage() {
+export default async function GuidedTodayPage() {
   const settings = await getSettings();
   const day = await getActiveDay(settings.activeBlockSlug, settings.currentDayOrder);
 
@@ -25,18 +25,21 @@ export default async function TodayPage() {
         <div>
           <h1 className="font-display text-2xl font-bold">No session scheduled</h1>
           <p className="mt-2 text-text-dim">Seed a program to begin training.</p>
+          <Link href="/today" className="mt-4 inline-block text-sm font-medium text-ice">
+            Back to Today
+          </Link>
         </div>
       </div>
     );
   }
 
-  const [allExercises, daysList, session] = await Promise.all([
+  const [allExercises, session, consistency] = await Promise.all([
     getAllExercises(),
-    getDaysList(),
     getInProgressSession(day.id),
+    getConsistency(),
   ]);
 
-  // Pre-fill from last completed session + compute progression hints per slot.
+  // Build the SAME merged slot/set shape today-logger receives (mirrors today/page.tsx).
   const slotsData: SlotData[] = await Promise.all(
     day.slots.map(async (slot) => {
       const last = await getLastSetsForExercise(slot.exercise.id);
@@ -48,9 +51,6 @@ export default async function TodayPage() {
       );
       const hint = computeHint(prev, slot.repScheme, slot.targetRpe, increment, settings.units);
 
-      // Merge any already-logged sets (from an in-progress session) onto the full
-      // prescription, so reloading mid-workout keeps both the logged sets AND the
-      // remaining to-do sets.
       const existing = session?.sets.filter((s) => s.slotId === slot.id) ?? [];
       const byNum = new Map(existing.map((s) => [s.setNumber, s]));
       const maxExisting = existing.reduce((m, s) => Math.max(m, s.setNumber), 0);
@@ -61,10 +61,12 @@ export default async function TodayPage() {
         if (e) {
           return { setNumber: n, weightKg: e.weightKg, reps: e.reps, rpe: e.rpe, isWarmup: e.isWarmup, completed: e.completed };
         }
+        // Pre-fill weight from the engine's suggestion (the one-tap default), then
+        // fall back to last session's matching set, so Log set is never empty.
         return {
           setNumber: n,
-          weightKg: last[i]?.weightKg ?? last[last.length - 1]?.weightKg ?? null,
-          reps: last[i]?.reps ?? null,
+          weightKg: hint.suggestedWeightKg ?? last[i]?.weightKg ?? last[last.length - 1]?.weightKg ?? null,
+          reps: hint.suggestedReps ?? last[i]?.reps ?? null,
           rpe: null,
           isWarmup: false,
           completed: false,
@@ -95,41 +97,24 @@ export default async function TodayPage() {
 
   return (
     <RestTimerProvider>
-      {/* Guided mode entry — beginner-first, one move at a time. Additive; the dense
-          logger below is untouched (it becomes Lifter Mode later). */}
-      <div className="px-4 pt-[calc(14px+var(--safe-top))]">
-        <Link
-          href="/today/guided"
-          className="tap flex items-center gap-3 rounded-card border border-ember-2/30 bg-ember-grad-soft p-4 shadow-ember-sm"
-        >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-ember-grad text-black">
-            <Sparkles size={20} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block font-display text-base font-bold">Start guided</span>
-            <span className="block text-xs text-text-dim">One move at a time — we walk you through it</span>
-          </span>
-          <ChevronRight size={20} className="shrink-0 text-ember-1" />
-        </Link>
-      </div>
-      <TodayLogger
+      <GuidedLogger
         key={day.id}
         dayId={day.id}
         dayName={day.name}
-        blockName={day.blockName}
-        splitType={day.splitType}
         slotsData={slotsData}
         initialSessionId={session?.id ?? null}
         initialStartMs={session?.startMs ?? null}
         units={settings.units}
         defaultRestSec={settings.defaultRestSec}
+        incrementUpperKg={settings.incrementUpperKg}
+        incrementLowerKg={settings.incrementLowerKg}
+        sessionCount={consistency.sessions + 1}
         allExercises={allExercises}
         swapSettings={{
           availableEquipment: settings.availableEquipment,
           backSafeOnly: settings.backSafeOnly,
           myEquipmentOnly: settings.myEquipmentOnly,
         }}
-        daysList={daysList}
       />
     </RestTimerProvider>
   );

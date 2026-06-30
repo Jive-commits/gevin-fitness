@@ -75,13 +75,18 @@ export default async function HomePage() {
               </div>
               <div className="num mt-0.5 text-xs text-text-faint">{day.slots.length} exercises · {day.blockName.replace(/—.*/, '').trim()}</div>
             </div>
-            <Link href="/today" className="tap shrink-0 rounded-pill bg-ember-grad px-5 py-2.5 text-sm font-semibold text-black shadow-ember-sm">
+            <Link href="/today/guided" className="tap shrink-0 rounded-pill bg-ember-grad px-5 py-2.5 text-sm font-semibold text-black shadow-ember-sm">
               Start
             </Link>
           </div>
-          <Link href="/today/custom" className="tap flex items-center justify-center gap-1.5 border-t border-ember-2/20 py-2.5 text-xs font-medium text-text-dim">
-            <Plus size={14} /> Or start a freestyle workout
-          </Link>
+          <div className="grid grid-cols-2 border-t border-ember-2/20 text-xs font-medium text-text-dim">
+            <Link href="/today" className="tap flex items-center justify-center gap-1.5 py-2.5">
+              Open full logger
+            </Link>
+            <Link href="/today/custom" className="tap flex items-center justify-center gap-1.5 border-l border-ember-2/20 py-2.5">
+              <Plus size={14} /> Freestyle
+            </Link>
+          </div>
         </div>
       )}
 
