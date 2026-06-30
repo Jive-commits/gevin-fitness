@@ -1,11 +1,11 @@
 import Link from 'next/link';
-import { Flame, CalendarCheck, Dumbbell, Trophy, ChevronRight, Plus, Layers, TrendingUp, Activity } from 'lucide-react';
+import { Flame, CalendarCheck, Dumbbell, Trophy, ChevronRight, Plus, Layers, TrendingUp, Activity, ArrowUpRight, Share2 } from 'lucide-react';
 import { HomeCalendar } from '@/components/home/home-calendar';
 import { CoachCard } from '@/components/home/coach-card';
 import { getSettings } from '@/lib/settings';
 import { getActiveDay } from '@/lib/queries';
 import { getCoachStatus } from '@/lib/coach/nudge';
-import { getDailyActivity, getTotals, getRecentPRs, getConsistency } from '@/lib/analytics';
+import { getDailyActivity, getTotals, getRecentPRs, getConsistency, getStrengthSignals } from '@/lib/analytics';
 import { kgToDisplay, formatWeight } from '@/lib/units';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -16,15 +16,17 @@ const SPLIT_TONE: Record<string, string> = { LEGS: 'text-ember-1', PUSH: 'text-i
 
 export default async function HomePage() {
   const settings = await getSettings();
-  const [day, daily, totals, recentPRs, consistency, coach] = await Promise.all([
+  const [day, daily, totals, recentPRs, consistency, coach, strengthSignals] = await Promise.all([
     getActiveDay(settings.activeBlockSlug, settings.currentDayOrder),
     getDailyActivity(35),
     getTotals(),
     getRecentPRs(4),
     getConsistency(),
     getCoachStatus(),
+    getStrengthSignals(7),
   ]);
   const units = settings.units;
+  const topSignals = strengthSignals.slice(0, 3);
   const tonnageDisplay = Math.round(kgToDisplay(totals.tonnageKg, units) ?? 0);
 
   return (
@@ -62,6 +64,43 @@ export default async function HomePage() {
           latestNudge: coach.latestNudge,
         }}
       />
+
+      {/* Share affordance — turn the coach roast / strength win into a screenshot */}
+      {(coach.latestNudge || topSignals.length > 0) && (
+        <Link
+          href="/share"
+          className="tap mb-4 -mt-1 flex items-center justify-center gap-1.5 text-[12px] font-medium text-ember-1"
+        >
+          <Share2 size={13} /> Make a share card
+        </Link>
+      )}
+
+      {/* You're getting stronger — load on the bar, NOT e1RM */}
+      {topSignals.length > 0 && (
+        <section className="mb-4 overflow-hidden rounded-card border border-mint/25 bg-surface p-4">
+          <div className="mb-3 flex items-center gap-1.5">
+            <ArrowUpRight size={16} className="text-mint" />
+            <h2 className="font-display text-base font-semibold">You’re getting stronger</h2>
+          </div>
+          <ul className="space-y-1.5">
+            {topSignals.map((s) => (
+              <li
+                key={s.slug}
+                className="flex items-center gap-3 rounded-xl border border-border surface-2 px-3.5 py-2.5"
+              >
+                <span className="num shrink-0 text-base font-bold text-mint">
+                  +{formatWeight(s.deltaKg, units)} {units}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">on {s.name}</span>
+                <span className="num shrink-0 text-[11px] text-text-faint">
+                  {formatWeight(s.fromKg, units)} → {formatWeight(s.toKg, units)}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2.5 text-[11px] text-text-faint">More load on the bar this week. That’s real.</p>
+        </section>
+      )}
 
       {/* Next session CTA */}
       {day && (

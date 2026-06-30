@@ -421,6 +421,104 @@ export async function getRecentSessions(limit = 60): Promise<SessionSummary[]> {
   });
 }
 
+// ---------- Day-7 "load on the bar" strength signal (beginner-legible) ----------
+
+export type StrengthSignal = {
+  name: string;
+  slug: string;
+  deltaKg: number; // increase in top working weight over the window (always > 0)
+  fromKg: number; // top working weight ~windowDays ago (or first session in window)
+  toKg: number; // latest top working weight
+};
+
+/**
+ * The most legible "you got stronger" deltas a beginner understands: the increase
+ * in load on the bar (heaviest completed non-warmup set) now vs ~windowDays ago,
+ * for the user's most-trained compound lifts. NOT e1RM. Read-only, one query.
+ * Anchored on the latest session (like getWeeklyVolumeByMuscle) so imported/older
+ * data still shows. Returns [] when there isn't enough history.
+ */
+export async function getStrengthSignals(windowDays = 7): Promise<StrengthSignal[]> {
+  // Anchor on the most recent session, not "now", so imported/older history still shows.
+  const latest = await prisma.workoutSession.findFirst({
+    where: { completed: true },
+    orderBy: { date: 'desc' },
+    select: { date: true },
+  });
+  if (!latest) return [];
+
+  const latestTs = latest.date.getTime();
+  const sinceTs = latestTs - windowDays * DAY;
+  // A little lead-in before the window so the "from" weight reflects where the
+  // lift sat going into the window, even on a sparse novice log.
+  const lookbackTs = sinceTs - windowDays * DAY;
+
+  const sets = await prisma.setLog.findMany({
+    where: {
+      completed: true,
+      isWarmup: false,
+      weightKg: { not: null },
+      reps: { not: null },
+      session: { completed: true, date: { gte: new Date(lookbackTs) } },
+      exercise: { category: 'COMPOUND' },
+    },
+    select: {
+      weightKg: true,
+      exerciseId: true,
+      session: { select: { date: true } },
+      exercise: { select: { slug: true, name: true } },
+    },
+  });
+
+  type Agg = {
+    slug: string;
+    name: string;
+    sessions: Set<number>;
+    fromKg: number | null; // best top set at/before the window opens (the baseline)
+    fromTs: number;
+    toKg: number; // best top set inside the window (the current load)
+  };
+  const byExercise = new Map<string, Agg>();
+
+  for (const s of sets) {
+    const w = s.weightKg!;
+    const ts = s.session.date.getTime();
+    const a = byExercise.get(s.exerciseId) ?? {
+      slug: s.exercise.slug,
+      name: s.exercise.name,
+      sessions: new Set<number>(),
+      fromKg: null,
+      fromTs: 0,
+      toKg: 0,
+    };
+    a.sessions.add(utcDayStart(ts));
+    if (ts < sinceTs) {
+      // Baseline: heaviest top set from the most recent pre-window session.
+      if (ts > a.fromTs || (ts === a.fromTs && w > (a.fromKg ?? 0))) {
+        if (ts > a.fromTs) a.fromKg = w;
+        else if (w > (a.fromKg ?? 0)) a.fromKg = w;
+        a.fromTs = ts;
+      }
+    } else {
+      // Inside the window: heaviest top working set is the current load.
+      if (w > a.toKg) a.toKg = w;
+    }
+    byExercise.set(s.exerciseId, a);
+  }
+
+  const signals: StrengthSignal[] = [];
+  for (const a of byExercise.values()) {
+    // Need a real before/after: a baseline, a current load, and >= 2 training days.
+    if (a.fromKg == null || a.toKg <= 0 || a.sessions.size < 2) continue;
+    const deltaKg = a.toKg - a.fromKg;
+    if (deltaKg <= 0) continue; // only lifts that went UP
+    signals.push({ name: a.name, slug: a.slug, deltaKg, fromKg: a.fromKg, toKg: a.toKg });
+  }
+
+  // Biggest, most legible win first.
+  return signals.sort((x, y) => y.deltaKg - x.deltaKg);
+}
+
 /** Exercises that actually have logged data — for the Progress exercise picker. */
 export async function getLoggedExercises(): Promise<{ id: string; slug: string; name: string; isCustom: boolean }[]> {
   const rows = await prisma.setLog.findMany({
