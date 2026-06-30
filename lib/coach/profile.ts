@@ -1,19 +1,27 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUserId } from '@/lib/session-user';
 import type { CoachProfile } from '@prisma/client';
 import type { CoachChannel, PersonaId } from './types';
 
 export type { CoachProfile };
 
-/** Read the single coach profile, lazily creating the default row (race-safe). */
+/** Read the current tenant's coach profile, lazily creating it (race-safe). */
 export async function getCoachProfile(): Promise<CoachProfile> {
-  const row = await prisma.coachProfile.findUnique({ where: { id: 'default' } });
+  const userId = await getCurrentUserId();
+  const row = await prisma.coachProfile.findFirst({ where: { userId } });
   if (row) return row;
+  // Adopt a pre-tenancy singleton row onto this user, if one exists.
+  const legacy = await prisma.coachProfile.findUnique({ where: { id: 'default' } });
+  if (legacy) {
+    if (legacy.userId == null) return prisma.coachProfile.update({ where: { id: 'default' }, data: { userId } });
+    if (legacy.userId === userId) return legacy;
+  }
   try {
-    return await prisma.coachProfile.create({ data: { id: 'default' } });
+    return await prisma.coachProfile.create({ data: { userId } });
   } catch {
     // A concurrent request created it first — read the row that now exists.
-    const created = await prisma.coachProfile.findUnique({ where: { id: 'default' } });
+    const created = await prisma.coachProfile.findFirst({ where: { userId } });
     if (created) return created;
     throw new Error('Failed to initialize coach profile');
   }

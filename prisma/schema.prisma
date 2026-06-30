@@ -92,6 +92,8 @@ model SlotExercise {
 // ---------- LOGGING ----------
 model WorkoutSession {
   id          String   @id @default(cuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
   dayId       String? // null = freestyle / off-program custom workout
   day         Day?     @relation(fields: [dayId], references: [id], onDelete: Cascade)
   name        String? // optional label for custom workouts
@@ -103,6 +105,7 @@ model WorkoutSession {
 
   @@index([dayId])
   @@index([date])
+  @@index([userId])
 }
 
 model SetLog {
@@ -127,15 +130,36 @@ model SetLog {
 
 model BodyMetric {
   id       String   @id @default(cuid())
+  userId   String?
+  user     User?    @relation(fields: [userId], references: [id])
   date     DateTime @default(now())
   weightKg Float
 
   @@index([date])
+  @@index([userId])
+}
+
+// ---------- TENANCY ----------
+// Multi-tenant foundation. Today the app runs single-tenant behind one passcode,
+// so there is exactly one User ("usr_default"); getCurrentUserId() resolves to it.
+// Real auth (phone OTP) plugs into that seam without further schema changes.
+model User {
+  id        String           @id @default(cuid())
+  phone     String?          @unique
+  email     String?          @unique
+  name      String?
+  createdAt DateTime         @default(now())
+  settings  UserSettings?
+  coach     CoachProfile?
+  sessions  WorkoutSession[]
+  metrics   BodyMetric[]
 }
 
 // ---------- SETTINGS (single-row app config) ----------
 model UserSettings {
   id              String      @id @default("default")
+  userId          String?     @unique
+  user            User?       @relation(fields: [userId], references: [id])
   units           String      @default("lb") // "kg" | "lb"
   backSafeOnly    Boolean     @default(true)
   myEquipmentOnly Boolean     @default(true)
@@ -154,7 +178,9 @@ model UserSettings {
 // Single-row profile (id = "default"), mirroring UserSettings. Holds the lifter's
 // goals + WHY (fuel for the personas) and the coach's delivery config.
 model CoachProfile {
-  id String @id @default("default")
+  id     String  @id @default("default")
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id])
 
   // Onboarding — the motivation engine the personas draw from
   primaryGoal         String? // lose_fat | build_muscle | get_stronger | stay_consistent | athletic | health

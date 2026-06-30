@@ -1,5 +1,6 @@
 import 'server-only';
 import { prisma } from '@/lib/prisma';
+import { getCurrentUserId } from '@/lib/session-user';
 import type { Units } from '@/lib/units';
 import type { Equipment } from '@prisma/client';
 
@@ -23,15 +24,25 @@ const ALL_EQUIPMENT: Equipment[] = [
   'BAND', 'KETTLEBELL', 'EZ_BAR', 'PULL_UP_BAR', 'BENCH', 'SWISS_BALL', 'SLIDER',
 ];
 
-/** Read settings, lazily creating the single default row if the seed hasn't run yet. */
+/** Read the current tenant's settings, lazily creating the row if needed. */
 export async function getSettings(): Promise<AppSettings> {
-  let row = await prisma.userSettings.findUnique({ where: { id: 'default' } });
+  const userId = await getCurrentUserId();
+  let row = await prisma.userSettings.findFirst({ where: { userId } });
+  if (!row) {
+    // Adopt a pre-tenancy singleton row onto this user, if one exists.
+    const legacy = await prisma.userSettings.findUnique({ where: { id: 'default' } });
+    if (legacy && legacy.userId == null) {
+      row = await prisma.userSettings.update({ where: { id: 'default' }, data: { userId } });
+    } else if (legacy && legacy.userId === userId) {
+      row = legacy;
+    }
+  }
   if (!row) {
     const defaultUnits =
       (process.env.DEFAULT_UNITS || 'lb').toLowerCase() === 'kg' ? 'kg' : 'lb';
     row = await prisma.userSettings.create({
       data: {
-        id: 'default',
+        userId,
         units: defaultUnits,
         availableEquipment: ALL_EQUIPMENT,
       },
