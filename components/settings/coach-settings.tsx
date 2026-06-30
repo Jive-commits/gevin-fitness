@@ -184,11 +184,19 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
           const active = persona === p.id;
           const locked = p.explicit && !unlocked.has(p.id);
           return (
-            <button
+            <div
               key={p.id}
+              role="button"
+              tabIndex={0}
               onClick={() => onTierTap(p)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onTierTap(p);
+                }
+              }}
               className={cn(
-                'tap w-full rounded-xl border p-3 text-left transition-colors',
+                'tap w-full cursor-pointer rounded-xl border p-3 text-left transition-colors',
                 active ? ACCENT_RING[p.accent] : 'border-border surface-2',
               )}
             >
@@ -255,7 +263,7 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
                   )}
                 </>
               )}
-            </button>
+            </div>
           );
         })}
       </div>
