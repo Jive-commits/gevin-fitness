@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { getCoachProfile, personaOf, goalPhrase } from '@/lib/coach/profile';
 import { validateTwilioSignature, twiml, classifyInbound } from '@/lib/coach/sms';
 import { generateReply } from '@/lib/coach/voice';
+import { detectCrisis, CRISIS_REPLY } from '@/lib/coach/safety';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,25 @@ export async function POST(req: NextRequest) {
   }
   if (kind === 'help') {
     return xml(twiml('FORGE coach sends accountability texts for your training. Msg & data rates may apply. Reply STOP to opt out.'));
+  }
+
+  // Crisis circuit-breaker: a genuine self-harm signal drops the roast entirely,
+  // points to help, and pauses the tough-love — independent of the LLM.
+  if (detectCrisis(body)) {
+    console.warn('[coach/sms] crisis signal detected on inbound; sending supportive reply, no roast.');
+    await prisma.nudgeLog.create({
+      data: {
+        profileId: profile.id,
+        direction: 'outbound',
+        channel: 'sms',
+        trigger: 'reply',
+        persona: personaOf(profile),
+        body: CRISIS_REPLY,
+        status: 'sent',
+        meta: { crisis: true },
+      },
+    });
+    return xml(twiml(CRISIS_REPLY));
   }
 
   // Two-way conversation: reply in persona.

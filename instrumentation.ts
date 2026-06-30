@@ -15,13 +15,23 @@ export async function register() {
   g.__forgeCoachScheduler = true;
 
   const INTERVAL_MS = 30 * 60 * 1000;
+  // In-flight guard: a slow tick (e.g. a 20s Grok call + SMS) must never overlap
+  // the next interval. The try/catch keeps a thrown tick from killing the loop.
+  let running = false;
   const tick = async () => {
+    if (running) {
+      console.warn('[coach] previous tick still running; skipping this interval.');
+      return;
+    }
+    running = true;
     try {
       const { runCoachTick } = await import('./lib/coach/nudge');
       const r = await runCoachTick();
       if (r.sent) console.log(`[coach] nudge sent (${r.trigger} · ${r.channel} · ${r.source}).`);
     } catch (err) {
       console.error('[coach] scheduled tick failed:', err);
+    } finally {
+      running = false;
     }
   };
 

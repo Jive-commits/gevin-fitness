@@ -1,5 +1,6 @@
 import 'server-only';
 import type { NudgeIntent, PersonaId } from './types';
+import { screenOutbound, detectCrisis, CRISIS_REPLY } from './safety';
 
 // ---------- Prompt construction ----------
 
@@ -217,6 +218,9 @@ async function callGrok(system: string, user: string): Promise<string | null> {
   return text ? sanitize(text) : null;
 }
 
+/** Last-resort line if even a fallback somehow trips the deterministic floor. */
+const SAFE_MINIMAL = `Save the excuses. Get one session in today — you made yourself a promise.`;
+
 export async function generateNudgeBody(
   persona: PersonaId,
   intensity: number,
@@ -224,9 +228,19 @@ export async function generateNudgeBody(
 ): Promise<{ body: string; source: 'ai' | 'template' }> {
   if (aiConfigured()) {
     const text = await callGrok(buildSystemPrompt(persona, intensity), buildUserMessage(intent));
-    if (text) return { body: text, source: 'ai' };
+    // Deterministic post-filter: the AI line ships only if it clears the floor.
+    if (text) {
+      const screen = screenOutbound(text);
+      if (screen.ok) return { body: text, source: 'ai' };
+      console.warn(`[coach] outbound screen blocked AI nudge (${screen.reason}); using template fallback.`);
+    }
   }
-  return { body: templateFallback(persona, intent), source: 'template' };
+  // The hand-authored fallbacks only use allowed profanity, but screen them too
+  // defensively. If somehow blocked, return a minimal safe line.
+  const fallback = templateFallback(persona, intent);
+  if (screenOutbound(fallback).ok) return { body: fallback, source: 'template' };
+  console.warn('[coach] template fallback unexpectedly blocked by outbound screen; using minimal safe line.');
+  return { body: SAFE_MINIMAL, source: 'template' };
 }
 
 /** A short, in-persona reply to an inbound SMS (two-way). Falls back to a templated ack. */
@@ -235,13 +249,23 @@ export async function generateReply(
   intensity: number,
   context: { goal: string | null; why: string | null; inbound: string },
 ): Promise<string> {
+  // Deterministic crisis breaker: a genuine self-harm signal drops the roast,
+  // regardless of persona, before any generation happens.
+  if (detectCrisis(context.inbound)) return CRISIS_REPLY;
+
+  const SAFE_DEFAULT = `Save the excuses. Whatever today looks like, get one session in — you made yourself a promise.`;
   if (aiConfigured()) {
     const system =
       buildSystemPrompt(persona, intensity) +
       `\n\nThey just texted you back. Reply in one short message that keeps them accountable. If they claim they trained, give them their due briefly. If they make an excuse, tear into it in character. If they mention injury/illness or a real crisis, drop the act and tell them to rest.`;
     const user = `Their goal: ${context.goal || 'not specified'}. Their reason: ${context.why || 'not specified'}.\nThey texted: "${context.inbound}"\nReply now.`;
     const text = await callGrok(system, user);
-    if (text) return text;
+    // Screen the AI reply against the floor; on a hit, fall back to a safe default.
+    if (text) {
+      const screen = screenOutbound(text);
+      if (screen.ok) return text;
+      console.warn(`[coach] outbound screen blocked AI reply (${screen.reason}); using safe default.`);
+    }
   }
-  return `Save the excuses. Whatever today looks like, get one session in — you made yourself a promise.`;
+  return SAFE_DEFAULT;
 }
