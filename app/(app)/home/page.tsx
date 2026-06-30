@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { Flame, CalendarCheck, Dumbbell, Trophy, ChevronRight, Plus, Layers, TrendingUp, Activity } from 'lucide-react';
 import { HomeCalendar } from '@/components/home/home-calendar';
+import { CoachCard } from '@/components/home/coach-card';
 import { getSettings } from '@/lib/settings';
 import { getActiveDay } from '@/lib/queries';
+import { getCoachStatus } from '@/lib/coach/nudge';
 import { getDailyActivity, getTotals, getRecentPRs, getConsistency } from '@/lib/analytics';
 import { kgToDisplay, formatWeight } from '@/lib/units';
 import { formatDate } from '@/lib/format';
@@ -14,12 +16,13 @@ const SPLIT_TONE: Record<string, string> = { LEGS: 'text-ember-1', PUSH: 'text-i
 
 export default async function HomePage() {
   const settings = await getSettings();
-  const [day, daily, totals, recentPRs, consistency] = await Promise.all([
+  const [day, daily, totals, recentPRs, consistency, coach] = await Promise.all([
     getActiveDay(settings.activeBlockSlug, settings.currentDayOrder),
     getDailyActivity(35),
     getTotals(),
     getRecentPRs(4),
     getConsistency(),
+    getCoachStatus(),
   ]);
   const units = settings.units;
   const tonnageDisplay = Math.round(kgToDisplay(totals.tonnageKg, units) ?? 0);
@@ -47,6 +50,18 @@ export default async function HomePage() {
             : 'No sessions yet this week — time to train.'}
         </p>
       </div>
+
+      {/* AI accountability coach */}
+      <CoachCard
+        data={{
+          onboarded: coach.onboarded,
+          enabled: coach.enabled,
+          persona: coach.persona,
+          liveHeadline: coach.liveHeadline,
+          liveTone: coach.liveTone,
+          latestNudge: coach.latestNudge,
+        }}
+      />
 
       {/* Next session CTA */}
       {day && (

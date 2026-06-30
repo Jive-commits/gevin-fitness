@@ -8,6 +8,7 @@ import { E1RMChart } from '@/components/charts/e1rm-chart';
 import { TrendPill } from '@/components/exercise/trend-pill';
 import { CustomExerciseActions } from '@/components/library/custom-exercise-actions';
 import { SpinalLoadMeter, BackSafeBadge, MusclePills, EquipmentChips } from '@/components/exercise/exercise-bits';
+import { ExerciseAnimation } from '@/components/exercise/exercise-animation';
 import { patternLabel, formatDate } from '@/lib/format';
 import { formatWeight } from '@/lib/units';
 
@@ -42,6 +43,8 @@ export default async function ExerciseDetailPage({ params }: { params: { slug: s
       </header>
 
       <div className="space-y-4 px-4 pt-4">
+        <ExerciseAnimation slug={exercise.slug} name={exercise.name} />
+
         {/* Tags */}
         <div className="space-y-2.5">
           <MusclePills primary={exercise.primaryMuscle} secondary={exercise.secondaryMuscles} max={5} />

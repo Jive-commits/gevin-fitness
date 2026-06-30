@@ -150,6 +150,64 @@ model UserSettings {
   updatedAt       DateTime    @updatedAt
 }
 
+// ---------- AI ACCOUNTABILITY COACH ----------
+// Single-row profile (id = "default"), mirroring UserSettings. Holds the lifter's
+// goals + WHY (fuel for the personas) and the coach's delivery config.
+model CoachProfile {
+  id String @id @default("default")
+
+  // Onboarding — the motivation engine the personas draw from
+  primaryGoal         String? // lose_fat | build_muscle | get_stronger | stay_consistent | athletic | health
+  goalDetail          String? // free text, e.g. "lose 20 lb before the wedding"
+  why                 String? // the deep motivation — weaponized (kindly or savagely) by the coach
+  whyDeeper           String? // optional "and why does that matter to you"
+  identity            String? // "the person I want to become"
+  obstacles           String? // what's derailed past attempts
+  trainingDaysPerWeek Int       @default(4)
+  targetDate          DateTime?
+
+  // Coach configuration
+  enabled   Boolean @default(false)
+  persona   String  @default("mentor") // savage | hype | mentor | zen | analyst
+  intensity Int     @default(2) // 1..3 — softens or sharpens the chosen persona
+  channel   String  @default("in_app") // in_app | sms | both
+
+  // SMS delivery + TCPA compliance
+  phoneNumber    String?
+  smsConsent     Boolean   @default(false)
+  smsConsentAt   DateTime?
+  smsStopped     Boolean   @default(false) // honored an inbound STOP
+  timezone       String    @default("America/New_York")
+  quietStartHour Int       @default(21) // local hour, inclusive — no texts at/after
+  quietEndHour   Int       @default(8) // local hour, exclusive — no texts before
+
+  lastNudgeAt DateTime?
+  onboardedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  nudges NudgeLog[]
+}
+
+model NudgeLog {
+  id        String       @id @default(cuid())
+  profileId String
+  profile   CoachProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  direction String // outbound | inbound
+  channel   String // sms | in_app
+  trigger   String // missed_day | streak_risk | comeback | milestone | manual_test | reply | checkin
+  persona   String? // persona snapshot at send time
+  body      String
+  meta      Json? // streak count, days missed, etc.
+  twilioSid String?
+  status    String       @default("created") // created | sent | delivered | failed | received | read
+  readAt    DateTime?
+  createdAt DateTime     @default(now())
+
+  @@index([profileId])
+  @@index([createdAt])
+}
+
 enum Muscle {
   QUADS
   HAMSTRINGS
