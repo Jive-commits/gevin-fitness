@@ -39,6 +39,15 @@ Three non-negotiable principles ran through every document:
 | 13 | [Feature Justification & Anti-Features](./13-feature-justification-and-anti-features.md) | Keep/simplify/hide/cut verdict on every current feature + the "what we will NOT build" list. |
 | 14 | [Retention Thesis](./14-retention-thesis.md) | Why it's a daily habit even without the coach; how it beats the incumbents. |
 
+### Execution depth (codebase-grounded build playbooks)
+
+| # | Document | What's inside |
+| --- | --- | --- |
+| 15 | [Phase 0 — Multi-Tenant Playbook](./15-phase0-multitenant-playbook.md) | The concrete migration off the `id:"default"` singletons → userId everywhere, phone-OTP auth, RLS backstop, ordered checklist + acceptance criteria. |
+| 16 | [Phase 1 — Killer-Core Build Spec](./16-phase1-killer-core-build.md) | The "naked loop": full-screen guided rep, post-sensation calibration, the day-7 load-on-the-bar signal, and the form-clip content requirement — mapped to the real logger/progression/analytics code. |
+| 17 | [Engineering Backlog (Phases 0–2)](./17-engineering-backlog.md) | Epics → tasks with files/effort/deps/acceptance, the 6→2-tab refactor, durable scheduler + deterministic coach safety, plus a 10-sprint sequence and the critical path. |
+| 18 | [Open Decisions & Gaps Log](./18-open-decisions-and-gaps.md) | The founder's open decisions (with recommended defaults + cheap tests), doc gaps/contradictions to fix, and the "build/prove first" ordering. |
+
 ---
 
 ## The plan at a glance
