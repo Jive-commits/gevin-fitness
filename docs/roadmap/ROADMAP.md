@@ -48,6 +48,17 @@ Three non-negotiable principles ran through every document:
 | 17 | [Engineering Backlog (Phases 0–2)](./17-engineering-backlog.md) | Epics → tasks with files/effort/deps/acceptance, the 6→2-tab refactor, durable scheduler + deterministic coach safety, plus a 10-sprint sequence and the critical path. |
 | 18 | [Open Decisions & Gaps Log](./18-open-decisions-and-gaps.md) | The founder's open decisions (with recommended defaults + cheap tests), doc gaps/contradictions to fix, and the "build/prove first" ordering. |
 
+### The aggressive viral wedge (the distribution engine)
+
+> *"Polish is a tie; aggression can't be tied — because it's the only thing competitors are too cowardly to copy."* These docs re-center the plan on the aggressive coach as the wedge and add the missing CMO content machine.
+
+| # | Document | What's inside |
+| --- | --- | --- |
+| 19 | [Aggressive Coach & Mode Spectrum](./19-aggressive-coach-and-modes.md) | The 5-tier coach spectrum (THE CORNER → MENTOR → DRILL SERGEANT → SAVAGE → UNHINGED) with real example messages, the visceral media layer (AI voice/video/notifications/haptics), the shareable "pick your coach" moment, and the consent/safety gating. |
+| 20 | [Viral Content Playbook](./20-viral-content-playbook.md) | **The CMO content machine** — hook taxonomy, 16+ filmable video concepts with scripts + captions, account architecture, the UGC/creator engine + challenge, and the controversy dial. |
+| 21 | [Aggressive Growth & Launch](./21-aggressive-growth-and-launch.md) | Platform-by-platform algorithm strategy, the viral launch moment/stunt, paid amplification of organic winners, PR/controversy strategy, and a 60-day calendar. |
+| — | [`prototype/coach-modes.html`](./prototype/coach-modes.html) | **"Choose your coach"** tap-through — the GENTLE→UNHINGED selector with live in-voice sample messages and the SAVAGE unlock gate. |
+
 ---
 
 ## The plan at a glance
