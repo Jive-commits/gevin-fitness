@@ -1,6 +1,9 @@
 // Shared types for the AI accountability coach. Pure — safe to import anywhere.
 
-export type PersonaId = 'savage' | 'hype' | 'mentor' | 'zen' | 'analyst';
+// The aggression spectrum — five ordered tiers, gentle → unhinged. `mentor` and
+// `savage` are reused so existing stored values + the schema default stay valid
+// with no DB migration.
+export type PersonaId = 'corner' | 'mentor' | 'drill' | 'savage' | 'unhinged';
 
 export type TriggerKind =
   | 'streak_risk' // active streak, today still empty, evening closing in

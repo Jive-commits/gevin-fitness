@@ -13,7 +13,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Chip } from '@/components/ui/chip';
 import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
-import { PERSONAS, GOAL_OPTIONS, goalLabel } from '@/lib/coach/personas';
+import { PERSONAS, PERSONA_BY_ID, GOAL_OPTIONS, goalLabel } from '@/lib/coach/personas';
+import type { PersonaMeta } from '@/lib/coach/personas';
 import { saveOnboarding, saveCoachConfig, savePhone, testCoach } from '@/app/actions/coach';
 import { OnboardingChat } from '@/components/settings/coach-onboarding-chat';
 
@@ -69,6 +70,33 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
   const [channel, setChannel] = useState(profile.channel);
   const [onboardOpen, setOnboardOpen] = useState(false);
   const [onboardMode, setOnboardMode] = useState<'chat' | 'form'>('form');
+  // The explicit tier awaiting one-time consent before it's selected.
+  const [gateTier, setGateTier] = useState<PersonaMeta | null>(null);
+  // Explicit tiers the user has already unlocked this session (so re-selecting
+  // them doesn't re-prompt). The currently-saved persona counts as unlocked.
+  const [unlocked, setUnlocked] = useState<Set<string>>(
+    () => new Set(PERSONA_BY_ID[profile.persona as keyof typeof PERSONA_BY_ID] ? [profile.persona] : []),
+  );
+
+  function selectPersona(p: PersonaMeta) {
+    setPersona(p.id);
+    pushConfig({ persona: p.id });
+  }
+
+  function onTierTap(p: PersonaMeta) {
+    if (p.explicit && !unlocked.has(p.id)) {
+      setGateTier(p); // open the consent gate; only save on confirm
+      return;
+    }
+    selectPersona(p);
+  }
+
+  function confirmGate() {
+    if (!gateTier) return;
+    setUnlocked((prev) => new Set(prev).add(gateTier.id));
+    selectPersona(gateTier);
+    setGateTier(null);
+  }
 
   function openOnboarding() {
     // Fresh setup with AI available → conversational intake; editing or no AI → quick form.
@@ -142,20 +170,23 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
         </button>
       )}
 
-      {/* Persona picker */}
+      {/* Coach spectrum picker — gentle (top) → unhinged (bottom) */}
       <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-text-faint">
-        <MessageSquare size={12} /> Coaching style
+        <MessageSquare size={12} /> Choose your coach
+      </div>
+      <div className="mb-2 flex items-center justify-between text-[9px] font-semibold uppercase tracking-wide">
+        <span className="text-mint">Gentle</span>
+        <span className="h-px flex-1 mx-2 bg-gradient-to-r from-mint/40 via-ember-2/40 to-ember-3/60" />
+        <span className="text-ember-3">Unhinged</span>
       </div>
       <div className="space-y-2">
         {PERSONAS.map((p) => {
           const active = persona === p.id;
+          const locked = p.explicit && !unlocked.has(p.id);
           return (
             <button
               key={p.id}
-              onClick={() => {
-                setPersona(p.id);
-                pushConfig({ persona: p.id });
-              }}
+              onClick={() => onTierTap(p)}
               className={cn(
                 'tap w-full rounded-xl border p-3 text-left transition-colors',
                 active ? ACCENT_RING[p.accent] : 'border-border surface-2',
@@ -165,16 +196,39 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
                 <span className="text-lg leading-none">{p.emoji}</span>
                 <span className="font-display text-sm font-semibold">{p.name}</span>
                 <span className={cn('text-[11px]', active ? ACCENT_TEXT[p.accent] : 'text-text-faint')}>{p.tagline}</span>
-                {active && <Check size={15} className={cn('ml-auto', ACCENT_TEXT[p.accent])} />}
+                {active ? (
+                  <Check size={15} className={cn('ml-auto', ACCENT_TEXT[p.accent])} />
+                ) : p.explicit ? (
+                  <span
+                    className={cn(
+                      'ml-auto inline-flex items-center gap-1 rounded-pill border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide',
+                      locked ? 'border-ember-3/40 bg-ember-3/10 text-ember-3' : 'border-mint/40 bg-mint/10 text-mint',
+                    )}
+                  >
+                    {locked ? <><Flame size={10} /> Gated</> : <><Check size={10} /> Unlocked</>}
+                  </span>
+                ) : null}
+              </div>
+              {/* heat bars — fill by spectrum position */}
+              <div className="mt-2 flex gap-1">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <span
+                    key={i}
+                    className={cn(
+                      'h-1 flex-1 rounded-full',
+                      i <= p.tier ? (p.explicit ? 'bg-ember-grad' : 'bg-ember-2/70') : 'bg-border',
+                    )}
+                  />
+                ))}
               </div>
               {active && (
                 <>
-                  <p className="mt-1.5 text-[12px] text-text-dim">{p.blurb}</p>
+                  <p className="mt-2 text-[12px] text-text-dim">{p.blurb}</p>
                   <div className="mt-2 rounded-lg border border-border bg-bg/40 p-2.5">
                     <div className="mb-1 text-[9px] uppercase tracking-wide text-text-faint">Sample text</div>
                     <p className="text-[12.5px] leading-snug text-text">{p.samples[0]}</p>
                   </div>
-                  {p.intense && (
+                  {p.explicit && (
                     <div className="mt-2.5">
                       <div className="mb-1 flex items-center gap-1.5 text-[10px] text-ember-2">
                         <AlertTriangle size={11} /> Opt-in tough love. Dial the heat:
@@ -205,6 +259,9 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
           );
         })}
       </div>
+
+      {/* Flame-gate: one-time consent before an explicit tier is selected */}
+      <ConsentGate tier={gateTier} onConfirm={confirmGate} onCancel={() => setGateTier(null)} />
 
       {/* Delivery channel */}
       <div className="mb-1.5 mt-4 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-text-faint">
@@ -258,6 +315,57 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
         )}
       </BottomSheet>
     </section>
+  );
+}
+
+// ---------- Flame-gate consent (explicit tiers) ----------
+function ConsentGate({
+  tier,
+  onConfirm,
+  onCancel,
+}: {
+  tier: PersonaMeta | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <BottomSheet
+      open={!!tier}
+      onOpenChange={(o) => { if (!o) onCancel(); }}
+      title={tier ? `Unlock ${tier.name}?` : ''}
+      description={
+        tier?.id === 'unhinged'
+          ? 'The dial pinned to NO MERCY — funny, loud, and not for everyone.'
+          : 'It swears at your excuses and quotes your why back when you fold.'
+      }
+    >
+      {tier && (
+        <div className="space-y-4 pb-2">
+          <div className="grid place-items-center pt-1 text-5xl" aria-hidden>
+            {tier.emoji}
+          </div>
+          <p className="text-center text-[13px] leading-relaxed text-text-dim">
+            {tier.id === 'unhinged'
+              ? 'It yells through the screen, “slaps” you, and won’t let you hide behind a single word. Funny, mean, effective — and not for everyone.'
+              : 'It swears at your excuses and quotes your why back when you fold. Funny, mean, effective — and not for everyone.'}
+          </p>
+          <div className="flex items-start gap-2 rounded-xl border border-ember-2/25 bg-ember-grad-soft p-3 text-[11px] leading-snug text-text-dim">
+            <Flame size={14} className="mt-0.5 shrink-0 text-ember-1" />
+            <span>
+              The floor never moves: contempt for the excuse, never you. No slurs, nothing sexual, no real violence,
+              nothing about self-harm. On any injury it breaks character and tells you to rest. Dial it down or kill it in
+              one tap.
+            </span>
+          </div>
+          <Button variant="primary" size="lg" className="w-full" onClick={onConfirm}>
+            <Flame size={16} /> I’m in — unlock {tier.name}
+          </Button>
+          <button onClick={onCancel} className="tap w-full py-2 text-center text-[13px] font-medium text-text-dim">
+            Not yet — keep me where I am
+          </button>
+        </div>
+      )}
+    </BottomSheet>
   );
 }
 

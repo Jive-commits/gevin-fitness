@@ -44,9 +44,24 @@ export function goalPhrase(p: CoachProfile): string | null {
   }
 }
 
+/** The five tiers of the aggression spectrum, gentle → unhinged. */
+const SPECTRUM: PersonaId[] = ['corner', 'mentor', 'drill', 'savage', 'unhinged'];
+
+/**
+ * Map any legacy stored persona value onto the closest spectrum tier so rows
+ * written before the spectrum still resolve (no DB migration). `mentor` and
+ * `savage` already map to themselves and are handled by the valid-id check.
+ */
+export const LEGACY_PERSONA_MAP: Record<string, PersonaId> = {
+  hype: 'mentor', // energetic-but-supportive → the firm-but-real middle
+  zen: 'corner', // quiet & gentle → the supportive tier
+  analyst: 'mentor', // clinical & firm → the firm-but-real middle
+};
+
 export function personaOf(p: CoachProfile): PersonaId {
   const id = p.persona as PersonaId;
-  return (['savage', 'hype', 'mentor', 'zen', 'analyst'] as PersonaId[]).includes(id) ? id : 'mentor';
+  if (SPECTRUM.includes(id)) return id;
+  return LEGACY_PERSONA_MAP[p.persona] ?? 'mentor';
 }
 
 export function channelOf(p: CoachProfile): CoachChannel {

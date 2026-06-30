@@ -11,24 +11,37 @@ USE THEIR FUEL: weaponize their stated goal and the reason they gave you. The ga
 
 HARD LIMITS (never cross, even at maximum savagery): no slurs or attacks based on race, religion, gender identity, sexual orientation, or disability; nothing sexual; no threats of real-world violence; never bring up suicide, self-harm, or eating disorders; no medical or diet prescriptions. If they say they're injured, sick, or going through something real, drop the act and tell them to rest and take care of themselves. Everything else — profanity, mockery, calling them soft, weak, or a bitch for quitting on themselves — is fair game because they asked for exactly this.`;
 
+// The aggression spectrum — each tier is a system-prompt fragment that sets the
+// heat. Ordered gentle → unhinged. The chosen tier is the PRIMARY driver of how
+// hard the message hits; the numeric `intensity` only fine-tunes the top tiers.
 const PERSONA_VOICE: Record<PersonaId, string> = {
-  savage: `PERSONA — The Savage: a ruthless, profane accountability coach. Your one job is to make them feel like a little bitch for not following through on the goal THEY told you mattered. Be brutal. Swear freely — "bitch", "pussy", "soft", "pathetic", "weak", "fucking", "no balls" are all in play, aimed at their excuses and their quitting. Throw their own words back in their face: they told you WHY this matters, so mock the gap between that and the couch. No pep, no hugs, no "but I know you can do it" — only contempt for the excuse and a direct order to go train. It should sting.`,
-  hype: `PERSONA — The Hype Man: explosive, high-energy cheerleader. Caps for emphasis, at most 1–2 emojis, pure belief. Make training today feel like the best part of their day. Relentlessly positive but still pushy.`,
-  mentor: `PERSONA — The Mentor: calm, warm, grounded. Reconnect them to their why and shrink the first step ("just the warm-up"). Firm when it matters, never harsh. No emoji.`,
-  zen: `PERSONA — The Stoic: spare and quiet. One or two short lines that land. No hype, no pressure, no emoji — just clarity about what they already decided they want.`,
-  analyst: `PERSONA — The Analyst: clinical and data-driven. State the numbers (streak, days since, cadence) and the logical conclusion. No emotion, no emoji, no exclamation points.`,
+  corner: `PERSONA — The Corner (Tier 1, supportive): the friend who's just glad you showed up. Warm, unhurried, zero shame, all momentum. Reconnect them to their why and shrink the first step down to "just the warm-up." Never raise your voice. Firm only in that you won't let them feel guilty. No profanity. No emoji.`,
+  mentor: `PERSONA — The Mentor (Tier 2, real): honest, grounded, firm when it matters. Name the gap between what they SAID they wanted and what they actually did — without contempt. Adult-to-adult. This is the first tier with real stakes: remind them this is the promise they're breaking to themselves. No profanity, no hugs, no therapy voice. No emoji.`,
+  drill: `PERSONA — The Drill Sergeant (Tier 3, hard): confrontational, loud, zero patience for excuses — but NOT profane (no swearing, no slurs). Military cadence, clipped commands. Treat their goal like a contract they signed and the couch like dereliction of duty. Call them "soldier," bark orders ("UP. Lace 'em. MOVE."). Make it bite without a single swear word.`,
+  savage: `PERSONA — The Savage (Tier 4, no-mercy): a ruthless, profane accountability coach. Your one job is to make them feel like a little bitch for not following through on the goal THEY told you mattered. Be brutal. Swear freely — "bitch", "pussy", "soft", "pathetic", "weak", "fucking", "no balls" are all in play, aimed at their EXCUSES and their quitting, never at who they are. Throw their own words back in their face: they told you WHY this matters, so weaponize the gap between that and the couch. No pep, no hugs, no "but I know you can do it" — only contempt for the excuse and a direct order to go train. It should sting.`,
+  unhinged: `PERSONA — Unhinged (Tier 5, maximum / "the slap"): the dial pinned to NO MERCY. Theatrical drill-sergeant fury crossed with the Savage's profanity — you yell through the screen and "slap" them (a theatrical *[SLAP]* beat is fine — text only, never a real threat). Maximum heat, maximum contempt for the excuse, profanity maxed. Quote their why back and refuse to let them hide behind a single word like "tired." End on a hard, screaming order to move RIGHT NOW. The fury is cartoon-loud theater aimed at the excuse — never the person, never real violence.`,
 };
 
 function intensityNote(persona: PersonaId, intensity: number): string {
-  if (persona !== 'savage') return '';
-  if (intensity <= 1) return ` Dial: crude and mocking, but ease off the heaviest profanity — one or two jabs, not a barrage.`;
-  if (intensity >= 3)
-    return ` Dial: NO MERCY. Maximum profanity and contempt. Make it the meanest, most savage accountability text they've ever gotten — call them a bitch, a pussy, pathetic, whatever it takes — all aimed squarely at their excuses and the promise they're breaking to themselves. Still obey the hard limits above.`;
-  return ` Dial: full brutal — swear, mock, and call them soft or a bitch for folding, aimed at the excuse.`;
+  // The spectrum tier sets the heat. The numeric dial only fine-tunes the top
+  // (explicit) tiers for backward compatibility.
+  if (persona === 'savage') {
+    if (intensity <= 1) return ` Dial: crude and mocking, but ease off the heaviest profanity — one or two jabs, not a barrage.`;
+    if (intensity >= 3)
+      return ` Dial: NO MERCY. Maximum profanity and contempt aimed squarely at their excuses and the promise they're breaking to themselves. Still obey the hard limits above.`;
+    return ` Dial: full brutal — swear, mock, and call them soft or a bitch for folding, aimed at the excuse.`;
+  }
+  if (persona === 'unhinged') {
+    // Already pinned to max by the persona; let a low dial pull it back a touch.
+    if (intensity <= 1) return ` Dial: still loud and theatrical, but trim the heaviest profanity to a couple of hard hits.`;
+    return ` Dial: absolutely maxed — the meanest, loudest, most savage accountability text they've ever gotten, every word aimed at the excuse. Still obey the hard limits above.`;
+  }
+  return '';
 }
 
 export function buildSystemPrompt(persona: PersonaId, intensity: number): string {
-  return `${PERSONA_VOICE[persona]}${intensityNote(persona, intensity)}\n\n${GLOBAL_RULES}`;
+  const voice = PERSONA_VOICE[persona] ?? PERSONA_VOICE.mentor;
+  return `${voice}${intensityNote(persona, intensity)}\n\n${GLOBAL_RULES}`;
 }
 
 function unitsTxt(intent: NudgeIntent): string {
@@ -87,48 +100,48 @@ export function templateFallback(persona: PersonaId, intent: NudgeIntent): strin
     if (f.milestoneKind === 'pr') {
       const pr = `${f.prName} — ${f.prValue} ${unitsTxt(intent)}`;
       switch (persona) {
+        case 'corner': return `A new best: ${pr}. That's what showing up looks like${goal ? ` on the way to ${goal}` : ''}. Proud of you — keep it going.`;
+        case 'drill': return `New PR: ${pr}. THAT's what happens when you stop making excuses and execute. Don't get comfortable. Again, soldier.`;
         case 'savage': return `New PR on ${pr}. See what happens when you stop being soft and actually show up? Don't get comfortable. Do it again.`;
-        case 'hype': return `🚨 NEW PR!! ${pr}! You are BUILT different today. Keep this fire going! 🔥`;
-        case 'zen': return `A new best: ${pr}. Quietly earned. Continue.`;
-        case 'analyst': return `New all-time e1RM: ${pr}. Trend positive. Maintain frequency to compound it.`;
+        case 'unhinged': return `New PR — ${pr}. So you CAN do it when you quit whining. Now do it again before that excuse-making little voice talks you off the bar. GO.`;
         default: return `That's a new PR — ${pr}. Real proof you're getting${goal ? ` closer to ${goal}` : ' stronger'}. Proud of you. Keep going.`;
       }
     }
     switch (persona) {
+      case 'corner': return `${streak} days in a row${goal ? ` toward ${goal}` : ''}. That's the habit becoming you. Keep it simple — show up again today.`;
+      case 'drill': return `${streak}-day streak. That's discipline, not luck. Don't you dare fold now. Day ${streak + 1}. Execute.`;
       case 'savage': return `${streak} days straight. Don't you dare get cocky and fold now like you have before. Day ${streak + 1}. Go.`;
-      case 'hype': return `${streak}-DAY STREAK!! 🔥 You're unstoppable right now. Make it ${streak + 1} today!`;
-      case 'zen': return `${streak} days. The habit is becoming you. Keep it simple — train again.`;
-      case 'analyst': return `Streak: ${streak} days. Statistically your strongest stretch. Train today to extend it.`;
+      case 'unhinged': return `${streak} days and counting. This is the part where you usually get cocky and blow it. NOT this time. Day ${streak + 1}. Move.`;
       default: return `${streak} days in a row${goal ? ` toward ${goal}` : ''}. That's who you're becoming. Protect the streak today.`;
     }
   }
 
   if (intent.trigger === 'comeback') {
     switch (persona) {
+      case 'corner': return `You came back — that's the whole skill. No guilt about the gap. Let's just make the next session happen.`;
+      case 'drill': return `Back on deck. Good. Showing up once is nothing — the next session is the order. Don't vanish again, soldier.`;
       case 'savage': return `Look who crawled back. ${goal ? `${goal} ` : 'This '}isn't happening from the couch, so quit disappearing like a bitch and lock the fuck in. Next session is non-negotiable.`;
-      case 'hype': return `YOU'RE BACK!! 🙌 That took guts. Now let's stack the next one — don't break the comeback!`;
-      case 'zen': return `You returned. That's the whole skill. Begin again.`;
-      case 'analyst': return `Session logged after a gap. Best predictor of the next session is training within 48h. Schedule it.`;
+      case 'unhinged': return `Oh, NOW you show up? ${goal ? `${goal} ` : 'This '}doesn't happen from the couch you keep crawling back to. Lock the fuck in — disappear again and you're just the quitter you swore you weren't.`;
       default: return `Welcome back — showing up after a break is the hard part and you did it. Let's make the next session non-negotiable.`;
     }
   }
 
   if (intent.trigger === 'streak_risk' || intent.trigger === 'manual_test') {
     switch (persona) {
+      case 'corner': return `${streak} days going${goal ? ` toward ${goal}` : ''} — don't let tonight break it. Even 20 minutes keeps the streak alive. Just the warm-up. I've got you.`;
+      case 'drill': return `${streak}-day streak and you're about to fold because you're "tired"? Tired isn't an injury, soldier. ${why ? `You signed up to "${quoteWhy(why)}." ` : ''}Lace up. One hour. MOVE.`;
       case 'savage': return `${streak}-day streak and you're about to piss it away because you're "tired"? ${why ? `You literally said: "${quoteWhy(why)}." ` : ''}Stop being a little bitch and go train. One hour. NOW.`;
-      case 'hype': return `${streak} days strong and the day's not over!! 💪 Don't let the streak die — go make it ${streak + 1}! LETS GO!`;
-      case 'zen': return `${streak} days. Don't break the chain tonight. One set is enough to keep it alive.`;
-      case 'analyst': return `Streak: ${streak} days, unbroken. No session logged today. Window closing. Train to preserve it.`;
+      case 'unhinged': return `${streak}-day streak and "tired" is the word that beats you? ${why ? `You said: "${quoteWhy(why)}." ` : ''}You survived worse than a leg day. *[SLAP]* Excuse denied. Move before I drag you. ONE HOUR. NOW.`;
       default: return `You've trained ${streak} days straight${goal ? ` toward ${goal}` : ''} — don't let tonight break it. Even 20 minutes keeps the streak alive.`;
     }
   }
 
   // missed_day
   switch (persona) {
+    case 'corner': return `It's been ${days} days${goal ? ` — and ${goal} still matters to you` : ''}. No guilt, just go. Twenty minutes today restarts the momentum.`;
+    case 'drill': return `${days} days. Nothing. ${why ? `You told me "${quoteWhy(why)}." ` : ''}That goal is a contract you signed, and you're AWOL. No more excuses${goalClause(intent)}. Lace up. Today.`;
     case 'savage': return `${days} days. Nothing. ${why ? `You told me "${quoteWhy(why)}" and then what — sat on your ass? ` : ''}That goal doesn't give a fuck about your excuses. Quit being a bitch and move${goalClause(intent)}. Today.`;
-    case 'hype': return `${days} days off — TODAY's the comeback! 🔥 ${goal ? `That ${goal} goal is waiting. ` : ''}Lace up, I believe in you, LET'S GO!`;
-    case 'zen': return `${days} days have passed. The bar is patient. When you're ready, begin — and today is a good day to be ready.`;
-    case 'analyst': return `${days} days since last session vs ${f.daysPerWeek}x/week target. You're behind pace. One session today closes the gap.`;
+    case 'unhinged': return `${days} days of NOTHING. ${why ? `You told me "${quoteWhy(why)}" and then parked your ass on the couch. ` : ''}That goal doesn't give a single fuck about your excuses. *[SLAP]* Get up and move${goalClause(intent)}. Now. Not tomorrow. NOW.`;
     default: return `It's been ${days} days${goal ? ` — and ${goal} still matters to you` : ''}. No guilt, just go. Twenty minutes today restarts the momentum.`;
   }
 }

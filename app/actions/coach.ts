@@ -8,7 +8,7 @@ import { intakeReply, extractProfile } from '@/lib/coach/intake';
 import type { ChatMessage } from '@/lib/coach/voice';
 import type { PersonaId, CoachChannel } from '@/lib/coach/types';
 
-const PERSONAS: PersonaId[] = ['savage', 'hype', 'mentor', 'zen', 'analyst'];
+const PERSONAS: PersonaId[] = ['corner', 'mentor', 'drill', 'savage', 'unhinged'];
 const CHANNELS: CoachChannel[] = ['in_app', 'sms', 'both'];
 const GOALS = ['lose_fat', 'build_muscle', 'get_stronger', 'stay_consistent', 'athletic', 'health'];
 
