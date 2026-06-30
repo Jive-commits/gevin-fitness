@@ -4,6 +4,8 @@ import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { getCoachProfile } from '@/lib/coach/profile';
 import { runCoachTick, composeNudge } from '@/lib/coach/nudge';
+import { intakeReply, extractProfile } from '@/lib/coach/intake';
+import type { ChatMessage } from '@/lib/coach/voice';
 import type { PersonaId, CoachChannel } from '@/lib/coach/types';
 
 const PERSONAS: PersonaId[] = ['savage', 'hype', 'mentor', 'zen', 'analyst'];
@@ -107,6 +109,40 @@ export async function testCoach() {
 /** A fresh, on-demand pep talk for the Home card — generated, never delivered or logged. */
 export async function coachPepTalk() {
   return composeNudge();
+}
+
+function cleanHistory(history: unknown): ChatMessage[] {
+  if (!Array.isArray(history)) return [];
+  return history
+    .slice(-24)
+    .map((m: any) => ({
+      role: m?.role === 'assistant' ? ('assistant' as const) : ('user' as const),
+      content: String(m?.content ?? '').slice(0, 2000),
+    }))
+    .filter((m) => m.content.trim());
+}
+
+/** One turn of the conversational onboarding — returns the coach's next question. */
+export async function coachChatTurn(history: ChatMessage[]) {
+  const res = await intakeReply(cleanHistory(history));
+  if (!res) return { ok: false as const, error: 'ai_unavailable' };
+  return { ok: true as const, reply: res.reply, done: res.done };
+}
+
+/** Distill the onboarding chat into the structured profile and save it. */
+export async function coachFinishChat(history: ChatMessage[]) {
+  const profile = await extractProfile(cleanHistory(history));
+  if (!profile) return { ok: false as const, error: 'ai_unavailable' };
+  await saveOnboarding({
+    primaryGoal: profile.primaryGoal,
+    goalDetail: profile.goalDetail,
+    why: profile.why,
+    whyDeeper: profile.whyDeeper,
+    identity: profile.identity,
+    obstacles: profile.obstacles,
+    trainingDaysPerWeek: profile.trainingDaysPerWeek,
+  });
+  return { ok: true as const, profile };
 }
 
 /** Mark a surfaced nudge as read/dismissed. */

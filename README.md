@@ -73,7 +73,8 @@ lives in [`railway.json`](./railway.json).
 | `APP_PASSCODE`  | yes      | Single-user passcode for the cookie session                  |
 | `NODE_ENV`      | no       | `production` on Railway                                       |
 | `DEFAULT_UNITS` | no       | `kg` (default) or `lb`; only applied when seeding a fresh DB  |
-| `ANTHROPIC_API_KEY` | no   | Turns on AI-written coach messages (Claude Haiku). Without it, the coach uses on-brand templated copy. |
+| `XAI_API_KEY`   | no       | Turns on **Grok (xAI)**-written coach messages + the conversational onboarding. Without it, the coach uses on-brand templated copy and a quick form. |
+| `XAI_MODEL`     | no       | xAI model id (default `grok-4`). |
 | `TWILIO_ACCOUNT_SID` | no  | Twilio SID — enables outgoing **SMS** nudges + two-way replies. |
 | `TWILIO_AUTH_TOKEN`  | no  | Twilio auth token (also validates inbound webhook signatures). |
 | `TWILIO_FROM_NUMBER` | no  | Your Twilio number in E.164 (e.g. `+14155551234`). Or set `TWILIO_MESSAGING_SERVICE_SID`. |
@@ -82,18 +83,21 @@ lives in [`railway.json`](./railway.json).
 | `COACH_SCHEDULER` | no     | `on`/`off`. The in-process scheduler runs by default in production; set `off` to rely solely on external cron. |
 
 The coach degrades gracefully: with **no** keys it still works fully **in-app** (live status,
-templated nudges, “pep talk”, “Test your coach”). Add `ANTHROPIC_API_KEY` for AI-written copy,
-and Twilio for real texts.
+templated nudges, “pep talk”, “Test your coach”). Add `XAI_API_KEY` for Grok-written copy and the
+conversational onboarding, and Twilio for real texts.
 
 ## The AI coach
 
 A best-effort accountability system built around your *why*.
 
-- **Onboarding** (Settings → Accountability Coach): your goal, the real reason behind it, who
-  you’re becoming, what’s derailed you, and your weekly cadence. Optional **voice dictation**
-  (browser Web Speech API — no setup). This is the fuel the personas draw on.
-- **Personas**: `savage` (viral tough-love, 3-step intensity dial), `hype`, `mentor`, `zen`,
-  `analyst`. Each has hard safety rails — the heat is aimed at excuses, never the person.
+- **Onboarding** (Settings → Accountability Coach): a **Grok-driven chat** that asks one question
+  at a time and digs (motivational-interviewing style) for the real emotional *why*, then distills
+  it into your profile. Falls back to a quick form (with optional browser **voice dictation**) when
+  AI is off. This is the fuel the personas draw on.
+- **Personas**: `savage` (viral, profane tough-love with a 3-step intensity dial), `hype`,
+  `mentor`, `zen`, `analyst`. The savage voice is deliberately brutal **by opt-in**, but every
+  persona keeps hard safety rails: no slurs or protected-class attacks, nothing sexual, no
+  self-harm content, and it backs off the moment you mention injury or illness.
 - **Triggers** (local-time + cadence aware): streak-at-risk, missed days, comebacks, streak
   milestones, and fresh PRs. Cooldown + de-dupe keep it from nagging.
 - **Delivery**: in-app coach card + optional SMS. Quiet hours, explicit opt-in consent, and
