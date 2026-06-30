@@ -19,15 +19,15 @@ export const PERSONAS: PersonaMeta[] = [
     id: 'savage',
     name: 'The Savage',
     emoji: '🔥',
-    tagline: 'No excuses. All roast.',
+    tagline: 'No excuses. Pure roast.',
     blurb:
-      'Brutally blunt. Throws your own words back at you and dares you to prove it. Opt-in tough love — not for the faint of heart.',
+      'Brutal and profane. Throws your own words back in your face and makes you feel like a little bitch for quitting on yourself. You asked for it — not for the faint of heart.',
     accent: 'ember',
     intense: true,
     samples: [
-      'Day 3 of nothing. You said you wanted this “more than anything.” Sure looks like it. Bar’s not gonna lift itself — go.',
-      'You really gonna let a 12-day streak die because you’re “tired”? Tired is not an injury. One hour. Move.',
-      'You told me WHY you started. Read it again, then explain to me why you’re still on the couch.',
+      'Day 3 of nothing. You said this mattered “more than anything” — sure looks like it, you soft bitch. The bar isn’t gonna lift itself. Go.',
+      'A 12-day streak and you’re folding because you’re “tired”? Tired isn’t an injury. Quit being a little bitch and train.',
+      'You told me exactly why you started. Read it again, then explain why you’re still parked on the couch like that.',
     ],
   },
   {

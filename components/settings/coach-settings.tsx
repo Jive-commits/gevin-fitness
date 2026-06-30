@@ -15,6 +15,7 @@ import { BottomSheet } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { PERSONAS, GOAL_OPTIONS, goalLabel } from '@/lib/coach/personas';
 import { saveOnboarding, saveCoachConfig, savePhone, testCoach } from '@/app/actions/coach';
+import { OnboardingChat } from '@/components/settings/coach-onboarding-chat';
 
 export type CoachProfileDTO = {
   onboarded: boolean;
@@ -67,6 +68,13 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
   const [intensity, setIntensity] = useState(profile.intensity);
   const [channel, setChannel] = useState(profile.channel);
   const [onboardOpen, setOnboardOpen] = useState(false);
+  const [onboardMode, setOnboardMode] = useState<'chat' | 'form'>('form');
+
+  function openOnboarding() {
+    // Fresh setup with AI available → conversational intake; editing or no AI → quick form.
+    setOnboardMode(!profile.onboarded && env.ai ? 'chat' : 'form');
+    setOnboardOpen(true);
+  }
 
   function refresh() {
     startTransition(() => router.refresh());
@@ -100,14 +108,14 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
 
       {/* Capability hints */}
       <div className="mb-3 flex flex-wrap gap-1.5 text-[10px]">
-        <CapChip ok={env.ai} on="AI voice on" off="Templated voice" />
+        <CapChip ok={env.ai} on="Grok voice on" off="Templated voice" />
         <CapChip ok={env.sms} on="SMS ready" off="In-app only" />
       </div>
 
       {/* Onboarding summary / CTA */}
       {profile.onboarded ? (
         <button
-          onClick={() => setOnboardOpen(true)}
+          onClick={openOnboarding}
           className="tap mb-3 flex w-full items-start gap-3 rounded-xl border border-border surface-2 p-3 text-left"
         >
           <Target size={16} className="mt-0.5 shrink-0 text-ember-1" />
@@ -122,7 +130,7 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
         </button>
       ) : (
         <button
-          onClick={() => setOnboardOpen(true)}
+          onClick={openOnboarding}
           className="tap mb-3 flex w-full items-center gap-3 rounded-xl border border-ember-2/30 bg-ember-grad-soft p-3.5 text-left"
         >
           <Sparkles size={18} className="shrink-0 text-ember-1" />
@@ -234,8 +242,20 @@ export function CoachSettings({ profile, env }: { profile: CoachProfileDTO; env:
       {/* Test */}
       <TestCoach disabled={!profile.onboarded} />
 
-      <BottomSheet open={onboardOpen} onOpenChange={setOnboardOpen} title="Your coach’s fuel" description="Honest answers make the nudges hit harder.">
-        <OnboardingForm profile={profile} onDone={() => { setOnboardOpen(false); refresh(); }} />
+      <BottomSheet
+        open={onboardOpen}
+        onOpenChange={setOnboardOpen}
+        title={onboardMode === 'chat' ? 'Talk to your coach' : 'Your coach’s fuel'}
+        description={onboardMode === 'chat' ? 'A few real questions. No wrong answers.' : 'Honest answers make the nudges hit harder.'}
+      >
+        {onboardMode === 'chat' ? (
+          <OnboardingChat
+            onDone={() => { setOnboardOpen(false); refresh(); }}
+            onFallback={() => setOnboardMode('form')}
+          />
+        ) : (
+          <OnboardingForm profile={profile} onDone={() => { setOnboardOpen(false); refresh(); }} />
+        )}
       </BottomSheet>
     </section>
   );
