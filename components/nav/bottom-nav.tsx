@@ -3,30 +3,64 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { House, Flame, CalendarDays, Library, LineChart, Settings } from 'lucide-react';
+import { House, Flame, CalendarDays, Library, LineChart, Settings, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLifterMode } from '@/components/providers/lifter-mode';
 
-const TABS = [
+type Tab = {
+  href: string;
+  label: string;
+  icon: typeof House;
+  /** Extra route prefixes that should also light this tab up as active. */
+  match?: string[];
+};
+
+// Focused consumer IA: two peer worlds. Today owns the workout loop; You owns
+// identity, progress, history, and every reference drilldown.
+const CONSUMER_TABS: Tab[] = [
+  { href: '/home', label: 'Today', icon: Flame, match: ['/today'] },
+  {
+    href: '/you',
+    label: 'You',
+    icon: User,
+    match: ['/progress', '/history', '/library', '/program', '/settings'],
+  },
+];
+
+// The original power-user instrument — every tab, restored behind Lifter Mode.
+const LIFTER_TABS: Tab[] = [
   { href: '/home', label: 'Home', icon: House },
   { href: '/today', label: 'Today', icon: Flame },
   { href: '/program', label: 'Program', icon: CalendarDays },
   { href: '/library', label: 'Library', icon: Library },
   { href: '/progress', label: 'Progress', icon: LineChart },
   { href: '/settings', label: 'Settings', icon: Settings },
-] as const;
+];
+
+function isActive(pathname: string, tab: Tab): boolean {
+  const prefixes = [tab.href, ...(tab.match ?? [])];
+  return prefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
+}
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { lifterMode, hydrated } = useLifterMode();
+
+  // Render the consumer 2-tab layout for SSR and the first client paint; only
+  // switch to the six-tab instrument after localStorage has hydrated.
+  const tabs = hydrated && lifterMode ? LIFTER_TABS : CONSUMER_TABS;
 
   return (
     <nav
       className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface/85 backdrop-blur-xl"
       style={{ paddingBottom: 'var(--safe-bottom)' }}
     >
-      <div className="mx-auto grid max-w-xl grid-cols-6">
-        {TABS.map((tab) => {
-          const active =
-            pathname === tab.href || pathname.startsWith(tab.href + '/');
+      <div
+        className="mx-auto grid max-w-xl"
+        style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
+      >
+        {tabs.map((tab) => {
+          const active = isActive(pathname, tab);
           const Icon = tab.icon;
           return (
             <Link
